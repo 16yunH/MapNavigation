@@ -5,4 +5,6 @@ set(CMAKE_CXX_STANDARD 17)
 
 add_executable(MapNavigation main.cpp
         src/PathFinder.cpp
-        src/PathFinder.h)
+        src/PathFinder.h
+        src/OsmParser.cpp
+        src/OsmParser.h)
