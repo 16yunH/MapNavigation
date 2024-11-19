@@ -67,6 +67,12 @@ build CMakeFiles/MapNavigation.dir/src/OsmParser.cpp.obj: CXX_COMPILER__MapNavig
   OBJECT_DIR = CMakeFiles\MapNavigation.dir
   OBJECT_FILE_DIR = CMakeFiles\MapNavigation.dir\src
 
+build CMakeFiles/MapNavigation.dir/lib/tinyxml2.cpp.obj: CXX_COMPILER__MapNavigation_unscanned_Debug D$:/3.code/CLionProjects/MapNavigation/lib/tinyxml2.cpp || cmake_object_order_depends_target_MapNavigation
+  DEP_FILE = CMakeFiles\MapNavigation.dir\lib\tinyxml2.cpp.obj.d
+  FLAGS = -g -fdiagnostics-color=always
+  OBJECT_DIR = CMakeFiles\MapNavigation.dir
+  OBJECT_FILE_DIR = CMakeFiles\MapNavigation.dir\lib
+
 
 # =============================================================================
 # Link build statements for EXECUTABLE target MapNavigation
@@ -75,7 +81,7 @@ build CMakeFiles/MapNavigation.dir/src/OsmParser.cpp.obj: CXX_COMPILER__MapNavig
 #############################################
 # Link the executable MapNavigation.exe
 
-build MapNavigation.exe: CXX_EXECUTABLE_LINKER__MapNavigation_Debug CMakeFiles/MapNavigation.dir/main.cpp.obj CMakeFiles/MapNavigation.dir/src/PathFinder.cpp.obj CMakeFiles/MapNavigation.dir/src/OsmParser.cpp.obj
+build MapNavigation.exe: CXX_EXECUTABLE_LINKER__MapNavigation_Debug CMakeFiles/MapNavigation.dir/main.cpp.obj CMakeFiles/MapNavigation.dir/src/PathFinder.cpp.obj CMakeFiles/MapNavigation.dir/src/OsmParser.cpp.obj CMakeFiles/MapNavigation.dir/lib/tinyxml2.cpp.obj
   FLAGS = -g
   LINK_LIBRARIES = -lkernel32 -luser32 -lgdi32 -lwinspool -lshell32 -lole32 -loleaut32 -luuid -lcomdlg32 -ladvapi32
   OBJECT_DIR = CMakeFiles\MapNavigation.dir
