@@ -1,0 +1,4 @@
+# ninja log v6
+11	86	7537358383207134	CMakeFiles/MapNavigation.dir/src/PathFinder.cpp.obj	818b607e04659d0a
+18	88	7537358383276948	CMakeFiles/MapNavigation.dir/src/OsmParser.cpp.obj	b32762edeca5dfa4
+25	543	7537358383346956	CMakeFiles/MapNavigation.dir/lib/tinyxml2.cpp.obj	7f9913f67a965780
