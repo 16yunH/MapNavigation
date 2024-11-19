@@ -7,4 +7,5 @@ add_executable(MapNavigation main.cpp
         src/PathFinder.cpp
         src/PathFinder.h
         src/OsmParser.cpp
-        src/OsmParser.h)
+        src/OsmParser.h
+        lib/tinyxml2.h)
