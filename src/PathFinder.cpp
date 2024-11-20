@@ -128,3 +128,18 @@ bool PathFinder::planPath(long long startNodeId, long long goalNodeId) {
 std::vector<PathNode> PathFinder::getPath() const {
     return m_path;
 }
+
+void PathFinder::printPath() const {
+    if (m_path.empty()) {
+        std::cout << "No path found!" << std::endl;
+        return;
+    }
+
+    std::cout << "Found path with " << m_path.size() << " nodes:" << std::endl;
+    for (const auto& node : m_path) {
+        std::cout << "Node ID: " << node.id
+                  << ", Latitude: " << node.lat
+                  << ", Longitude: " << node.lon
+                  << ", Cost: " << node.cost << std::endl;
+    }
+}
