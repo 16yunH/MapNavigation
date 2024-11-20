@@ -28,7 +28,7 @@ public:
     PathFinder(const OsmParser& parser, const PathFinderConfig& config); // 构造函数
     bool planPath(long long startNodeId, long long goalNodeId);          // 路径规划主函数
     [[nodiscard]] std::vector<PathNode> getPath() const; // 获取路径
-    void printPath() const; // 输出找到的最短路径
+    void PathFinder::printPath() const; // 输出找到的最短路径
 
 private:
     // 工具函数
