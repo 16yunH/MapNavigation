@@ -53,12 +53,9 @@ using namespace std;
 
 int main() {
     // Path to the OSM file (adjust according to your actual path)
-    string osmFile = "map.osm";
-
-    // Step 1: Parse the OSM file to extract nodes and ways
-    OsmParser osmParser(osmFile);
+    OsmParser osmParser("D:/3.code/CLionProjects/MapNavigation/data/map.osm");
     if (!osmParser.parse()) {
-        cerr << "Failed to parse OSM file: " << osmFile << endl;
+        cerr << "Failed to parse OSM file "  << endl;
         return 1;
     }
 
@@ -89,17 +86,17 @@ int main() {
     // Step 4: Test the pathfinding functionality
     // You can replace startId and goalId with actual node IDs based on your OSM file
     int startId = nodes[0].id;  // Use the first node as the start
-    int goalId = nodes[1].id;   // Use the second node as the goal
+    int goalId = nodes[2].id;   // Use the second node as the goal
 
     // Find the shortest path using Bidirectional A* search
-    vector<Node*> path = pathFinder.findShortestPath(startId, goalId);
+    vector<PathNode*> path = pathFinder.findShortestPath(startId, goalId);
 
     // Step 5: Print the result path
     if (path.empty()) {
         cout << "No path found between nodes " << startId << " and " << goalId << endl;
     } else {
         cout << "Shortest path between nodes " << startId << " and " << goalId << " is:" << endl;
-        for (Node* node : path) {
+        for (PathNode* node : path) {
             cout << "Node ID: " << node->id << " (Lat: " << node->y << ", Lon: " << node->x << ")" << endl;
         }
     }

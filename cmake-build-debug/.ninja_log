@@ -16,3 +16,13 @@
 1005	1415	7537885124705143	MapNavigation.exe	926d9ab13b7f1f96
 11	1072	7537885710916267	CMakeFiles/MapNavigation.dir/main.cpp.obj	3294f7c079a5f1b9
 1073	1503	7537885721528835	MapNavigation.exe	926d9ab13b7f1f96
+22	1342	7537903462230224	CMakeFiles/MapNavigation.dir/src/OsmParser.cpp.obj	b32762edeca5dfa4
+8	1564	7537903462088671	CMakeFiles/MapNavigation.dir/main.cpp.obj	3294f7c079a5f1b9
+15	1851	7537903462168766	CMakeFiles/MapNavigation.dir/src/PathFinder.cpp.obj	818b607e04659d0a
+1851	2432	7537903480515795	MapNavigation.exe	926d9ab13b7f1f96
+10	1261	7537904041156398	CMakeFiles/MapNavigation.dir/main.cpp.obj	3294f7c079a5f1b9
+1263	1775	7537904053686760	MapNavigation.exe	926d9ab13b7f1f96
+11	1345	7537905004267424	CMakeFiles/MapNavigation.dir/main.cpp.obj	3294f7c079a5f1b9
+1346	1849	7537905017618680	MapNavigation.exe	926d9ab13b7f1f96
+11	1384	7537905238047289	CMakeFiles/MapNavigation.dir/main.cpp.obj	3294f7c079a5f1b9
+1385	1946	7537905251780604	MapNavigation.exe	926d9ab13b7f1f96
