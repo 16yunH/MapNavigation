@@ -1,52 +1,89 @@
 #include "OsmParser.h"
+#include "D:/3.code/CLionProjects/MapNavigation/lib/tinyxml2.h"
 #include <iostream>
 #include <stdexcept>
 
 using namespace std;
 using namespace tinyxml2;
 
-OsmParser::OsmParser(const std::string& filename) : filename(filename) {}
+// 构造函数
+OsmParser::OsmParser(const string& filename) : m_filename(filename) {}
 
-OsmParser::~OsmParser() = default;
-
+// 解析 OSM 文件
 bool OsmParser::parse() {
     XMLDocument doc;
-    if (doc.LoadFile(filename.c_str()) != XML_SUCCESS) {
-        cerr << "Failed to load OSM file: " << filename << endl;
+    if (doc.LoadFile(m_filename.c_str()) != XML_SUCCESS) {
+        cerr << "Failed to load OSM file: " << m_filename << endl;
         return false;
     }
 
-    XMLElement* root = doc.FirstChildElement("osm");
-    if (root == nullptr) {
-        cerr << "Invalid OSM file: " << filename << endl;
+    XMLElement* osmElement = doc.FirstChildElement("osm");
+    if (!osmElement) {
+        cerr << "Invalid OSM file structure" << endl;
         return false;
     }
 
-    for (XMLElement* nodeElement = root->FirstChildElement("node"); nodeElement != nullptr; nodeElement = nodeElement->NextSiblingElement("node")) {
+    // 解析所有的 Node 元素
+    for (XMLElement* nodeElement = osmElement->FirstChildElement("node"); nodeElement != nullptr; nodeElement = nodeElement->NextSiblingElement("node")) {
         parseNode(nodeElement);
+    }
+
+    // 解析所有的 Way 元素
+    for (XMLElement* wayElement = osmElement->FirstChildElement("way"); wayElement != nullptr; wayElement = wayElement->NextSiblingElement("way")) {
+        parseWay(wayElement);
     }
 
     return true;
 }
 
+// 获取解析后的节点
 const vector<Node>& OsmParser::getNodes() const {
-    return nodes;
+    return m_nodes;
 }
 
-void OsmParser::parseNode(XMLElement* nodeElement) {
-    Node node;
-    node.id = stoi(nodeElement->Attribute("id"));
-    node.lat = stod(nodeElement->Attribute("lat"));
-    node.lon = stod(nodeElement->Attribute("lon"));
-    node.timestamp = nodeElement->Attribute("timestamp");
-    node.version = stoi(nodeElement->Attribute("version"));
-    node.changeset = stoi(nodeElement->Attribute("changeset"));
-    node.uid = stoi(nodeElement->Attribute("uid"));
-    node.user = nodeElement->Attribute("user");
+// 获取解析后的路径
+const vector<Way>& OsmParser::getWays() const {
+    return m_ways;
+}
 
-    if (node.id == 0 || node.lat == 0 || node.lon == 0) {
-        throw runtime_error("Invalid node data.");
+// 解析 Node 元素
+void OsmParser::parseNode(XMLElement* element) {
+    Node node;
+    node.id = element->Int64Attribute("id");
+    node.lat = element->DoubleAttribute("lat");
+    node.lon = element->DoubleAttribute("lon");
+
+    // 解析标签
+    for (XMLElement* tagElement = element->FirstChildElement("tag"); tagElement != nullptr; tagElement = tagElement->NextSiblingElement("tag")) {
+        const char* key = tagElement->Attribute("k");
+        const char* value = tagElement->Attribute("v");
+        if (key && value) {
+            node.tags[key] = value;
+        }
     }
 
-    nodes.push_back(node);
+    m_nodes.push_back(node);
+}
+
+// 解析 Way 元素
+void OsmParser::parseWay(XMLElement* element) {
+    Way way;
+    way.id = element->Int64Attribute("id");
+
+    // 解析节点 ID
+    for (XMLElement* ndElement = element->FirstChildElement("nd"); ndElement != nullptr; ndElement = ndElement->NextSiblingElement("nd")) {
+        long long nodeId = ndElement->Int64Attribute("ref");
+        way.nodeIds.push_back(nodeId);
+    }
+
+    // 解析标签
+    for (:XMLElement* tagElement = element->FirstChildElement("tag"); tagElement != nullptr; tagElement = tagElement->NextSiblingElement("tag")) {
+        const char* key = tagElement->Attribute("k");
+        const char* value = tagElement->Attribute("v");
+        if (key && value) {
+            way.tags[key] = value;
+        }
+    }
+
+    m_ways.push_back(way);
 }
