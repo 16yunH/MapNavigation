@@ -2,46 +2,50 @@
 #define OSM_PARSER_H
 
 #include <string>
+#include <unordered_map>
 #include <vector>
-#include <map>
+#include <iostream>
+#include <fstream>
+#include <sstream>
 #include "D:/3.code/CLionProjects/MapNavigation/lib/tinyxml2.h"
 
-using namespace std;
-using namespace tinyxml2;
-
-// 节点（Node）结构体，表示一个 OSM 文件中的节点元素
-struct Node {
-    long long id;          // 节点 ID
-    double lat;            // 纬度
-    double lon;            // 经度
-    map<string, string> tags; // 节点的标签
+// Define a structure to hold node information
+struct OsmNode {
+    long long id;      // Node ID
+    double lat;        // Latitude
+    double lon;        // Longitude
 };
 
-// 路径（Way）结构体，表示一个 OSM 文件中的路径元素
-struct Way {
-    long long id;          // 路径 ID
-    vector<long long> nodeIds; // 路径包含的节点 ID
-    map<std::string, string> tags; // 路径的标签
+// Define a structure to hold way information
+struct OsmWay {
+    long long id;                  // Way ID
+    std::vector<long long> nodeIds; // References to nodes that make up the way
+    std::string tag;               // Tag associated with the way (e.g., "building", "highway")
 };
 
-// 解析器类
+// Class for parsing OSM XML data
 class OsmParser {
 public:
-    explicit OsmParser(const string& filename);  // 构造函数，指定文件名
-    bool parse();                           // 解析 OSM 文件
-    [[nodiscard]] const vector<Node>& getNodes() const;  // 获取解析后的节点列表
-    [[nodiscard]] const vector<Way>& getWays() const;    // 获取解析后的路径列表
+    OsmParser();
+    ~OsmParser();
+
+    // Method to parse an OSM XML file
+    bool parse(const std::string& filename);
+
+    // Method to get the nodes
+    const std::unordered_map<long long, OsmNode>& getNodes() const;
+
+    // Method to get the ways
+    const std::unordered_map<long long, OsmWay>& getWays() const;
 
 private:
-    string m_filename;               // 文件名
-    vector<Node> m_nodes;            // 存储解析的节点
-    vector<Way> m_ways;              // 存储解析的路径
+    // Helper methods for parsing nodes and ways
+    void parseNode(tinyxml2::XMLElement* nodeElement);
+    void parseWay(tinyxml2::XMLElement* wayElement);
 
-    // 辅助函数，解析单个节点
-    void parseNode(XMLElement* element);
-
-    // 辅助函数，解析单个路径
-    void parseWay(XMLElement* element);
+    // Data structures to store nodes and ways
+    std::unordered_map<long long, OsmNode> nodes_;
+    std::unordered_map<long long, OsmWay> ways_;
 };
 
 #endif // OSM_PARSER_H

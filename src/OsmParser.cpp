@@ -1,89 +1,87 @@
 #include "OsmParser.h"
 #include "D:/3.code/CLionProjects/MapNavigation/lib/tinyxml2.h"
-#include <iostream>
-#include <stdexcept>
 
-using namespace std;
-using namespace tinyxml2;
+OsmParser::OsmParser() = default;
 
-// 构造函数
-OsmParser::OsmParser(const string& filename) : m_filename(filename) {}
+OsmParser::~OsmParser() = default;
 
-// 解析 OSM 文件
-bool OsmParser::parse() {
-    XMLDocument doc;
-    if (doc.LoadFile(m_filename.c_str()) != XML_SUCCESS) {
-        cerr << "Failed to load OSM file: " << m_filename << endl;
+bool OsmParser::parse(const std::string& filename) {
+    tinyxml2::XMLDocument doc;
+
+    // Load the XML file
+    if (doc.LoadFile(filename.c_str()) != tinyxml2::XML_SUCCESS) {
+        std::cerr << "Error loading OSM file: " << filename << std::endl;
         return false;
     }
 
-    XMLElement* osmElement = doc.FirstChildElement("osm");
-    if (!osmElement) {
-        cerr << "Invalid OSM file structure" << endl;
+    // Get the root element <osm>
+    tinyxml2::XMLElement* osmElement = doc.RootElement();
+    if (osmElement == nullptr) {
+        std::cerr << "Error: No root element <osm> found in the file." << std::endl;
         return false;
     }
 
-    // 解析所有的 Node 元素
-    for (XMLElement* nodeElement = osmElement->FirstChildElement("node"); nodeElement != nullptr; nodeElement = nodeElement->NextSiblingElement("node")) {
+    // Parse nodes
+    tinyxml2::XMLElement* nodeElement = osmElement->FirstChildElement("node");
+    while (nodeElement != nullptr) {
         parseNode(nodeElement);
+        nodeElement = nodeElement->NextSiblingElement("node");
     }
 
-    // 解析所有的 Way 元素
-    for (XMLElement* wayElement = osmElement->FirstChildElement("way"); wayElement != nullptr; wayElement = wayElement->NextSiblingElement("way")) {
+    // Parse ways
+    tinyxml2::XMLElement* wayElement = osmElement->FirstChildElement("way");
+    while (wayElement != nullptr) {
         parseWay(wayElement);
+        wayElement = wayElement->NextSiblingElement("way");
     }
 
     return true;
 }
 
-// 获取解析后的节点
-const vector<Node>& OsmParser::getNodes() const {
-    return m_nodes;
+const std::unordered_map<long long, OsmNode>& OsmParser::getNodes() const {
+    return nodes_;
 }
 
-// 获取解析后的路径
-const vector<Way>& OsmParser::getWays() const {
-    return m_ways;
+const std::unordered_map<long long, OsmWay>& OsmParser::getWays() const {
+    return ways_;
 }
 
-// 解析 Node 元素
-void OsmParser::parseNode(XMLElement* element) {
-    Node node;
-    node.id = element->Int64Attribute("id");
-    node.lat = element->DoubleAttribute("lat");
-    node.lon = element->DoubleAttribute("lon");
+void OsmParser::parseNode(tinyxml2::XMLElement* nodeElement) {
+    // Parse the attributes of the node
+    long long id = nodeElement->Int64Attribute("id");
+    double lat = nodeElement->DoubleAttribute("lat");
+    double lon = nodeElement->DoubleAttribute("lon");
 
-    // 解析标签
-    for (XMLElement* tagElement = element->FirstChildElement("tag"); tagElement != nullptr; tagElement = tagElement->NextSiblingElement("tag")) {
-        const char* key = tagElement->Attribute("k");
-        const char* value = tagElement->Attribute("v");
-        if (key && value) {
-            node.tags[key] = value;
-        }
-    }
-
-    m_nodes.push_back(node);
+    // Create a new OsmNode and add it to the nodes map
+    OsmNode node{id, lat, lon};
+    nodes_[id] = node;
 }
 
-// 解析 Way 元素
-void OsmParser::parseWay(XMLElement* element) {
-    Way way;
-    way.id = element->Int64Attribute("id");
+void OsmParser::parseWay(tinyxml2::XMLElement* wayElement) {
+    // Parse the attributes of the way
+    long long id = wayElement->Int64Attribute("id");
 
-    // 解析节点 ID
-    for (XMLElement* ndElement = element->FirstChildElement("nd"); ndElement != nullptr; ndElement = ndElement->NextSiblingElement("nd")) {
+    // Initialize an OsmWay object
+    OsmWay way;
+    way.id = id;
+
+    // Parse the <nd> elements inside the <way> element (these represent the nodes in the way)
+    tinyxml2::XMLElement* ndElement = wayElement->FirstChildElement("nd");
+    while (ndElement != nullptr) {
         long long nodeId = ndElement->Int64Attribute("ref");
         way.nodeIds.push_back(nodeId);
+        ndElement = ndElement->NextSiblingElement("nd");
     }
 
-    // 解析标签
-    for (XMLElement* tagElement = element->FirstChildElement("tag"); tagElement != nullptr; tagElement = tagElement->NextSiblingElement("tag")) {
-        const char* key = tagElement->Attribute("k");
-        const char* value = tagElement->Attribute("v");
-        if (key && value) {
-            way.tags[key] = value;
+    // Parse the <tag> element inside the <way> (representing the tag of the way)
+    tinyxml2::XMLElement* tagElement = wayElement->FirstChildElement("tag");
+    if (tagElement != nullptr) {
+        const char* tagValue = tagElement->Attribute("v");
+        if (tagValue != nullptr) {
+            way.tag = tagValue;
         }
     }
 
-    m_ways.push_back(way);
+    // Add the way to the ways map
+    ways_[id] = way;
 }

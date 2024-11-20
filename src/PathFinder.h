@@ -1,79 +1,53 @@
 #ifndef PATHFINDER_H
 #define PATHFINDER_H
 
-#include <vector>
 #include <unordered_map>
+#include <unordered_set>
+#include <vector>
 #include <queue>
 #include <functional>
 #include <cmath>
-#include <limits>
+#include "OsmParser.h"  // For OsmNode and OsmWay
 
-using namespace std;
+// A* Node structure
+struct AStarNode {
+    long long id;  // Node ID
+    double gScore; // Cost from start node to this node
+    double fScore; // Estimated total cost (gScore + heuristic)
+    AStarNode* parent; // Parent node for path reconstruction
 
-// Structure to represent a graph node (e.g., an intersection or point)
-struct PathNode {
-    long long id;                // Node identifier (e.g., intersection ID)
-    double x, y;           // Coordinates of the node (longitude, latitude)
-    PathNode* parent = nullptr; // Pointer to the parent node (used for path reconstruction)
-    double gScore = numeric_limits<double>::infinity(); // Cost from start to this node
-    double fScore = numeric_limits<double>::infinity(); // Estimated total cost (gScore + heuristic)
+    AStarNode(long long id, double gScore, double fScore, AStarNode* parent = nullptr)
+        : id(id), gScore(gScore), fScore(fScore), parent(parent) {}
 
-    PathNode(long long id, double x, double y) : id(id), x(x), y(y) {}
-
-    // fScore calculation
-    [[nodiscard]] double fCost() const {
-        return fScore;
-    }
-
-    // Optional: Overload < operator for priority queue comparison (to prioritize lower fScore)
-    bool operator<(const PathNode &other) const {
-        return fScore > other.fScore;  // Min-heap for priority queue, prioritize smaller fScore
+    // Comparator for the priority queue (min-heap based on fScore)
+    bool operator<(const AStarNode& other) const {
+        return fScore > other.fScore;  // Min-heap, prioritize lower fScore
     }
 };
 
-// Structure to represent an edge between two nodes
-struct Edge {
-    PathNode *from, *to;
-    double weight; // Edge weight (e.g., distance or travel time)
-
-    Edge(PathNode *from, PathNode *to, double weight) : from(from), to(to), weight(weight) {}
-};
-
-// Hash function for PathNode so it can be used in unordered_map (necessary for PathNode equality)
-namespace std {
-    template <>
-    struct hash<PathNode> {
-        size_t operator()(const PathNode& node) const {
-            return hash<long long>{}(node.id); // Hashing based on node ID
-        }
-    };
-}
-
-// Class for PathFinder that implements A* and Bidirectional A* search
 class PathFinder {
 public:
-    PathFinder();  // Constructor to initialize the pathfinder
+    PathFinder();
+    ~PathFinder();
 
-    // Add a node to the graph
-    void addNode(long long id, double x, double y);
+    // Method to set the OSM parser (to load map data)
+    void setOsmParser(OsmParser* parser);
 
-    // Add an edge between two nodes with a weight
-    void addEdge(long long fromId, long long toId, double weight);
-
-    // Find the shortest path between start and goal using Bidirectional A* search
-    vector<PathNode*> findShortestPath(long long startId, long long goalId);
+    // Method to find the shortest path between start and goal using Bidirectional A* search
+    std::vector<long long> findShortestPath(long long startId, long long goalId);
 
 private:
-    // Data structures for the graph
-    unordered_map<long long, PathNode*> nodes;  // Node storage by ID
-    unordered_map<long long, vector<Edge>> graph; // Graph with edges by node ID
+    // Helper methods for A* algorithm
+    double heuristic(long long fromId, long long toId);
+    std::unordered_map<long long, AStarNode*> aStarSearch(long long startId, long long goalId, bool isForward);
+    static std::vector<long long> reconstructPath(AStarNode* meetingPoint,
+                                            const std::unordered_map<long long, AStarNode*>& forwardSearch,
+                                            const std::unordered_map<long long, AStarNode*>& reverseSearch);
 
-    // Helper functions for A* algorithm
-    static double heuristic(PathNode* a, PathNode* b);  // Heuristic function for A* (Manhattan distance)
-    static vector<PathNode*> reconstructPath(PathNode* start, PathNode* meetingPoint, PathNode* goal); // Reconstruct path from meeting point
-
-    // A* search function (returning a path from start to goal, via a map of node IDs to their parent nodes)
-    unordered_map<long long, PathNode*> aStarSearch(long long startId, long long goalId);
+    // Data structures for the graph (nodes and ways)
+    OsmParser* osmParser_;
+    std::unordered_map<long long, OsmNode> nodes_;  // Nodes from OSM
+    std::unordered_map<long long, std::vector<long long>> adjList_; // Adjacency list (node ID -> neighbors)
 };
 
 #endif // PATHFINDER_H

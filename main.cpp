@@ -42,46 +42,40 @@ int main() {
 }
 */
 
-
-#include <iostream>
-#include <fstream>
-#include <string>
-#include <vector>
-#include "src/OsmParser.h"
 #include "src/PathFinder.h"
-
-using namespace std;
+#include "src/OsmParser.h"
+#include <iostream>
 
 int main() {
-    // Path to the OSM file (adjust according to your actual path)
-    OsmParser osmParser("D:/3.code/CLionProjects/MapNavigation/data/mapofgx.osm");
-    if (!osmParser.parse()) {
-        cerr << "Failed to parse OSM file "  << endl;
+    // Load the OSM data
+    OsmParser osmParser;
+    if (!osmParser.parse("D:/3.code/CLionProjects/MapNavigation/data/mapofgx.osm")) {
+        std::cerr << "Failed to parse OSM data!" << std::endl;
         return 1;
     }
-    // Step 2: Create a PathFinder instance
+
+    // Create the PathFinder and set the parser
     PathFinder pathFinder;
-    // Step 3: Build the graph by adding nodes and edges from the OSM file
-    const vector<Node>& nodes = osmParser.getNodes();
-    const vector<Way>& ways = osmParser.getWays();
-    // Adding nodes to the PathFinder graph
-    for (const Node& osmNode : nodes) {
-        pathFinder.addNode(osmNode.id, osmNode.lon, osmNode.lat);
-    }
-    // Step 4: Test the pathfinding functionality
-    // You can replace startId and goalId with actual node IDs based on your OSM file
-    long long startId = 946031315;  // Use the first node as the start
-    long long goalId = 946031154;   // Use the second node as the goal
-    // Find the shortest path using Bidirectional A* search
-    vector<PathNode*> path = pathFinder.findShortestPath(startId, goalId);
-    // Step 5: Print the result path
-    if (path.empty()) {
-        cout << "No path found between nodes " << startId << " and " << goalId << endl;
-    } else {
-        cout << "Shortest path between nodes " << startId << " and " << goalId << " is:" << endl;
-        for (PathNode* node : path) {
-            cout << "Node ID: " << node->id << " (Lat: " << node->y << ", Lon: " << node->x << ")" << endl;
+    pathFinder.setOsmParser(&osmParser);
+
+    // Define the start and goal IDs (these should be valid node IDs from your OSM data)
+    long long startId = 655345426;  // Example start node
+    long long goalId = 655345472;   // Example goal node
+
+    // Find the shortest path using Bidirectional A*
+    std::vector<long long> path = pathFinder.findShortestPath(startId, goalId);
+
+    // Print the resulting path
+    if (!path.empty()) {
+        std::cout << "Shortest path: ";
+        for (long long id : path) {
+            std::cout << id << " ";
         }
+        std::cout << std::endl;
+    } else {
+        std::cout << "No path found." << std::endl;
     }
+
     return 0;
 }
+

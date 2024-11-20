@@ -1,125 +1,122 @@
 #include "PathFinder.h"
-#include <unordered_set>
+#include <unordered_map>
 #include <queue>
-#include <iostream>
+#include <cmath>
 #include <algorithm>
 
-// Constructor
-PathFinder::PathFinder() = default;
+PathFinder::PathFinder() : osmParser_(nullptr) {}
 
-// Add a node to the graph
-void PathFinder::addNode(long long id, double x, double y) {
-    nodes[id] = new PathNode(id, x, y);
-}
+PathFinder::~PathFinder() = default;
 
-// Add an edge to the graph
-void PathFinder::addEdge(long long fromId, long long toId, double weight) {
-    PathNode* fromNode = nodes[fromId];
-    PathNode* toNode = nodes[toId];
-    graph[fromId].emplace_back(fromNode, toNode, weight);
-    graph[toId].emplace_back(toNode, fromNode, weight); // assuming undirected graph
-}
+void PathFinder::setOsmParser(OsmParser* parser) {
+    osmParser_ = parser;
+    nodes_ = parser->getNodes();
 
-// Heuristic function for A* (Manhattan distance)
-double PathFinder::heuristic(PathNode* a, PathNode* b) {
-    // Manhattan Distance: |x1 - x2| + |y1 - y2|
-    return std::abs(a->x - b->x) + std::abs(a->y - b->y);
-}
-
-// Reconstruct the path once the goal is found
-std::vector<PathNode*> PathFinder::reconstructPath(PathNode* start, PathNode* meetingPoint, PathNode* goal) {
-    std::vector<PathNode*> path;
-
-    // Reconstruct path from the start to the meeting point
-    PathNode* current = meetingPoint;
-    while (current != start) {
-        path.push_back(current);
-        current = current->parent;
-    }
-    path.push_back(start);
-    std::reverse(path.begin(), path.end());
-
-    // Reconstruct path from the meeting point to the goal
-    current = meetingPoint;
-    while (current != goal) {
-        path.push_back(current);
-        current = current->parent;
-    }
-    path.push_back(goal);
-
-    return path;
-}
-
-// A* search function for a single direction (either forward or reverse)
-std::unordered_map<long long, PathNode*> PathFinder::aStarSearch(long long startId, long long goalId) {
-    PathNode* startNode = nodes[startId];
-    PathNode* goalNode = nodes[goalId];
-
-    // Priority queue for A* (min-heap)
-    std::priority_queue<PathNode*, std::vector<PathNode*>, std::function<bool(PathNode*, PathNode*)>> openSet(
-        [](PathNode* a, PathNode* b) {
-            return a->fScore > b->fScore; // prioritize by fScore
+    // Build adjacency list based on OsmWay
+    adjList_.clear();
+    const auto& ways = parser->getWays();
+    for (const auto& wayPair : ways) {
+        const OsmWay& way = wayPair.second;
+        for (size_t i = 0; i < way.nodeIds.size() - 1; ++i) {
+            adjList_[way.nodeIds[i]].push_back(way.nodeIds[i + 1]);
+            adjList_[way.nodeIds[i + 1]].push_back(way.nodeIds[i]);  // Undirected graph
         }
-    );
+    }
+}
 
-    // Maps to track the shortest path and costs
-    std::unordered_map<long long, PathNode*> cameFrom;  // Tracks the path (parent nodes)
-    std::unordered_map<long long, double> gScore;       // Cost from start to node
-    std::unordered_map<long long, double> fScore;       // Estimated cost from start to goal
+// Heuristic function: Manhattan distance between two nodes
+double PathFinder::heuristic(long long fromId, long long toId) {
+    const OsmNode& fromNode = nodes_[fromId];
+    const OsmNode& toNode = nodes_[toId];
+    return std::abs(fromNode.lat - toNode.lat) + std::abs(fromNode.lon - toNode.lon); // Manhattan distance
+}
 
-    // Initialize the open set and scores
-    openSet.push(startNode);
+// A* search function (forward or backward)
+// A* search function (forward or backward)
+std::unordered_map<long long, AStarNode*> PathFinder::aStarSearch(long long startId, long long goalId, bool isForward) {
+    std::priority_queue<AStarNode> openSet;
+    std::unordered_map<long long, AStarNode*> cameFrom;
+    std::unordered_map<long long, double> gScore; // Cost from start node
+    std::unordered_map<long long, double> fScore; // Estimated total cost
+
+    openSet.emplace(startId, 0.0, heuristic(startId, goalId));
     gScore[startId] = 0.0;
-    fScore[startId] = heuristic(startNode, goalNode);
+    fScore[startId] = heuristic(startId, goalId);
 
     while (!openSet.empty()) {
-        PathNode* currentNode = openSet.top();
-        openSet.pop();
+        AStarNode currentNode = openSet.top();  // Get the node from openSet
+        openSet.pop();  // Remove it from the queue
 
-        // If we reached the goal
-        if (currentNode == goalNode) {
+        long long currentId = currentNode.id;
+
+        // If we reached the goal node, return the search path
+        if (currentId == goalId) {
             return cameFrom;
         }
 
         // Explore neighbors
-        for (const Edge& edge : graph[currentNode->id]) {
-            PathNode* neighbor = edge.to;
-            double tentativeGScore = gScore[currentNode->id] + edge.weight;
+        for (long long neighborId : adjList_[currentId]) {
+            double tentativeGScore = gScore[currentId] + 1; // assuming weight is 1 for simplicity
 
-            // If this is a better path
-            if (tentativeGScore < gScore[neighbor->id]) {
-                neighbor->parent = currentNode;  // Set the parent of the neighbor
-                cameFrom[neighbor->id] = currentNode;
-                gScore[neighbor->id] = tentativeGScore;
-                fScore[neighbor->id] = gScore[neighbor->id] + heuristic(neighbor, goalNode);
-                openSet.push(neighbor);
+            // If we found a better path to the neighbor, update the gScore and fScore
+            if (tentativeGScore < gScore[neighborId]) {
+                cameFrom[neighborId] = new AStarNode(currentId, tentativeGScore, tentativeGScore + heuristic(neighborId, goalId));
+                gScore[neighborId] = tentativeGScore;
+                fScore[neighborId] = tentativeGScore + heuristic(neighborId, goalId);
+                openSet.emplace(neighborId, tentativeGScore, fScore[neighborId]);
             }
         }
     }
 
-    return {};  // Return an empty map if no path found
+    return {}; // Return empty map if no path found
 }
 
+
+// Reconstruct the path from start to goal using the meeting point
+std::vector<long long> PathFinder::reconstructPath(AStarNode* meetingPoint,
+                                                    const std::unordered_map<long long, AStarNode*>& forwardSearch,
+                                                    const std::unordered_map<long long, AStarNode*>& reverseSearch) {
+    std::vector<long long> path;
+
+    // Reconstruct path from start to meeting point
+    AStarNode* currentNode = meetingPoint;
+    while (currentNode != nullptr) {
+        path.push_back(currentNode->id);
+        currentNode = currentNode->parent;
+    }
+    std::reverse(path.begin(), path.end());
+
+    // Reconstruct path from meeting point to goal
+    currentNode = reverseSearch.at(meetingPoint->id);
+    while (currentNode != nullptr) {
+        path.push_back(currentNode->id);
+        currentNode = currentNode->parent;
+    }
+
+    return path;
+}
+
+
 // Bidirectional A* Search to find the shortest path
-std::vector<PathNode*> PathFinder::findShortestPath(long long startId, long long goalId) {
-    if (startId == goalId) return {}; // No path needed if start and goal are the same
+std::vector<long long> PathFinder::findShortestPath(long long startId, long long goalId) {
+    if (startId == goalId) return {startId}; // No need to search if start == goal
 
     // Perform A* search from both directions
-    std::unordered_map<long long, PathNode*> forwardPath = aStarSearch(startId, goalId);
-    std::unordered_map<long long, PathNode*> reversePath = aStarSearch(goalId, startId);
+    std::unordered_map<long long, AStarNode*> forwardSearch = aStarSearch(startId, goalId, true);
+    std::unordered_map<long long, AStarNode*> reverseSearch = aStarSearch(goalId, startId, false);
 
     // Try to find the meeting point between forward and reverse searches
-    PathNode* meetingPoint = nullptr;
-    for (const auto& node : forwardPath) {
-        if (reversePath.find(node.first) != reversePath.end()) {
-            meetingPoint = node.second;
+    AStarNode* meetingPoint = nullptr;
+    for (const auto& nodePair : forwardSearch) {
+        if (reverseSearch.find(nodePair.first) != reverseSearch.end()) {
+            meetingPoint = nodePair.second;
             break;
         }
     }
 
-    // If no meeting point found, return empty path
-    if (!meetingPoint) return {};
+    // If no meeting point is found, return empty path
+    if (meetingPoint == nullptr) return {};
 
     // Reconstruct the path by combining the forward and reverse paths
-    return reconstructPath(nodes[startId], meetingPoint, nodes[goalId]);
+    return reconstructPath(meetingPoint, forwardSearch, reverseSearch);
 }
