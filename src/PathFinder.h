@@ -8,13 +8,15 @@
 #include <cmath>
 #include <limits>
 
+using namespace std;
+
 // Structure to represent a graph node (e.g., an intersection or point)
 struct PathNode {
     long long id;                // Node identifier (e.g., intersection ID)
     double x, y;           // Coordinates of the node (longitude, latitude)
     PathNode* parent = nullptr; // Pointer to the parent node (used for path reconstruction)
-    double gScore = std::numeric_limits<double>::infinity(); // Cost from start to this node
-    double fScore = std::numeric_limits<double>::infinity(); // Estimated total cost (gScore + heuristic)
+    double gScore = numeric_limits<double>::infinity(); // Cost from start to this node
+    double fScore = numeric_limits<double>::infinity(); // Estimated total cost (gScore + heuristic)
 
     PathNode(long long id, double x, double y) : id(id), x(x), y(y) {}
 
@@ -42,7 +44,7 @@ namespace std {
     template <>
     struct hash<PathNode> {
         size_t operator()(const PathNode& node) const {
-            return std::hash<long long>{}(node.id); // Hashing based on node ID
+            return hash<long long>{}(node.id); // Hashing based on node ID
         }
     };
 }
@@ -59,19 +61,19 @@ public:
     void addEdge(long long fromId, long long toId, double weight);
 
     // Find the shortest path between start and goal using Bidirectional A* search
-    std::vector<PathNode*> findShortestPath(long long startId, long long goalId);
+    vector<PathNode*> findShortestPath(long long startId, long long goalId);
 
 private:
     // Data structures for the graph
-    std::unordered_map<long long, PathNode*> nodes;  // Node storage by ID
-    std::unordered_map<long long, std::vector<Edge>> graph; // Graph with edges by node ID
+    unordered_map<long long, PathNode*> nodes;  // Node storage by ID
+    unordered_map<long long, vector<Edge>> graph; // Graph with edges by node ID
 
     // Helper functions for A* algorithm
     static double heuristic(PathNode* a, PathNode* b);  // Heuristic function for A* (Manhattan distance)
-    static std::vector<PathNode*> reconstructPath(PathNode* start, PathNode* meetingPoint, PathNode* goal); // Reconstruct path from meeting point
+    static vector<PathNode*> reconstructPath(PathNode* start, PathNode* meetingPoint, PathNode* goal); // Reconstruct path from meeting point
 
     // A* search function (returning a path from start to goal, via a map of node IDs to their parent nodes)
-    std::unordered_map<long long, PathNode*> aStarSearch(long long startId, long long goalId);
+    unordered_map<long long, PathNode*> aStarSearch(long long startId, long long goalId);
 };
 
 #endif // PATHFINDER_H
