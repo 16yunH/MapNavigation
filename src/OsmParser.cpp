@@ -77,7 +77,7 @@ void OsmParser::parseWay(XMLElement* element) {
     }
 
     // 解析标签
-    for (:XMLElement* tagElement = element->FirstChildElement("tag"); tagElement != nullptr; tagElement = tagElement->NextSiblingElement("tag")) {
+    for (XMLElement* tagElement = element->FirstChildElement("tag"); tagElement != nullptr; tagElement = tagElement->NextSiblingElement("tag")) {
         const char* key = tagElement->Attribute("k");
         const char* value = tagElement->Attribute("v");
         if (key && value) {
