@@ -19,7 +19,7 @@ int main() {
 #include "src/OsmParser.h"
 
 int main() {
-    OsmParser parser("D:/3.code/CLionProjects/MapNavigation/data/map.osm");
+    OsmParser parser("D:/3.code/CLionProjects/MapNavigation/data/mapofgx.osm");
 
     if (parser.parse()) {
         const std::vector<Node>& nodes = parser.getNodes();
@@ -42,6 +42,7 @@ int main() {
 }
 */
 
+
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -53,7 +54,7 @@ using namespace std;
 
 int main() {
     // Path to the OSM file (adjust according to your actual path)
-    OsmParser osmParser("D:/3.code/CLionProjects/MapNavigation/data/map.osm");
+    OsmParser osmParser("D:/3.code/CLionProjects/MapNavigation/data/mapofgx.osm");
     if (!osmParser.parse()) {
         cerr << "Failed to parse OSM file "  << endl;
         return 1;
@@ -73,8 +74,8 @@ int main() {
 
     // Step 4: Test the pathfinding functionality
     // You can replace startId and goalId with actual node IDs based on your OSM file
-    int startId = 29583122;  // Use the first node as the start
-    int goalId = 59595666;   // Use the second node as the goal
+    long long startId = 655345433;  // Use the first node as the start
+    long long goalId = 946031154;   // Use the second node as the goal
 
     // Find the shortest path using Bidirectional A* search
     vector<PathNode*> path = pathFinder.findShortestPath(startId, goalId);

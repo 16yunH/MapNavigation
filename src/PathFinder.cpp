@@ -8,12 +8,12 @@
 PathFinder::PathFinder() = default;
 
 // Add a node to the graph
-void PathFinder::addNode(int id, double x, double y) {
+void PathFinder::addNode(long long id, double x, double y) {
     nodes[id] = new PathNode(id, x, y);
 }
 
 // Add an edge to the graph
-void PathFinder::addEdge(int fromId, int toId, double weight) {
+void PathFinder::addEdge(long long fromId, long long toId, double weight) {
     PathNode* fromNode = nodes[fromId];
     PathNode* toNode = nodes[toId];
     graph[fromId].emplace_back(fromNode, toNode, weight);
@@ -51,7 +51,7 @@ std::vector<PathNode*> PathFinder::reconstructPath(PathNode* start, PathNode* me
 }
 
 // A* search function for a single direction (either forward or reverse)
-std::unordered_map<int, PathNode*> PathFinder::aStarSearch(int startId, int goalId) {
+std::unordered_map<long long, PathNode*> PathFinder::aStarSearch(long long startId, long long goalId) {
     PathNode* startNode = nodes[startId];
     PathNode* goalNode = nodes[goalId];
 
@@ -63,9 +63,9 @@ std::unordered_map<int, PathNode*> PathFinder::aStarSearch(int startId, int goal
     );
 
     // Maps to track the shortest path and costs
-    std::unordered_map<int, PathNode*> cameFrom;  // Tracks the path (parent nodes)
-    std::unordered_map<int, double> gScore;       // Cost from start to node
-    std::unordered_map<int, double> fScore;       // Estimated cost from start to goal
+    std::unordered_map<long long, PathNode*> cameFrom;  // Tracks the path (parent nodes)
+    std::unordered_map<long long, double> gScore;       // Cost from start to node
+    std::unordered_map<long long, double> fScore;       // Estimated cost from start to goal
 
     // Initialize the open set and scores
     openSet.push(startNode);
@@ -101,12 +101,12 @@ std::unordered_map<int, PathNode*> PathFinder::aStarSearch(int startId, int goal
 }
 
 // Bidirectional A* Search to find the shortest path
-std::vector<PathNode*> PathFinder::findShortestPath(int startId, int goalId) {
+std::vector<PathNode*> PathFinder::findShortestPath(long long startId, long long goalId) {
     if (startId == goalId) return {}; // No path needed if start and goal are the same
 
     // Perform A* search from both directions
-    std::unordered_map<int, PathNode*> forwardPath = aStarSearch(startId, goalId);
-    std::unordered_map<int, PathNode*> reversePath = aStarSearch(goalId, startId);
+    std::unordered_map<long long, PathNode*> forwardPath = aStarSearch(startId, goalId);
+    std::unordered_map<long long, PathNode*> reversePath = aStarSearch(goalId, startId);
 
     // Try to find the meeting point between forward and reverse searches
     PathNode* meetingPoint = nullptr;
