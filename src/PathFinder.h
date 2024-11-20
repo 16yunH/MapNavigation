@@ -9,36 +9,36 @@
 #include <limits>
 
 // Structure to represent a graph node (e.g., an intersection or point)
-struct Node {
+struct PathNode {
     int id;                // Node identifier (e.g., intersection ID)
     double x, y;           // Coordinates of the node (longitude, latitude)
-    Node* parent = nullptr; // Pointer to the parent node (used for path reconstruction)
+    PathNode* parent = nullptr; // Pointer to the parent node (used for path reconstruction)
     double gScore = std::numeric_limits<double>::infinity(); // Cost from start to this node
     double fScore = std::numeric_limits<double>::infinity(); // Estimated total cost (gScore + heuristic)
 
-    Node(int id, double x, double y) : id(id), x(x), y(y) {}
+    PathNode(int id, double x, double y) : id(id), x(x), y(y) {}
 
-    bool operator==(const Node &other) const {
+    bool operator==(const PathNode &other) const {
         return id == other.id;
     }
 
     // fScore calculation
-    double fCost() const {
+    [[nodiscard]] double fCost() const {
         return fScore;
     }
 
     // Optional: Overload < operator for priority queue comparison
-    bool operator<(const Node &other) const {
+    bool operator<(const PathNode &other) const {
         return fScore > other.fScore;  // Priority queue will prioritize lower fScore
     }
 };
 
 // Structure to represent an edge between two nodes
 struct Edge {
-    Node *from, *to;
+    PathNode *from, *to;
     double weight; // Edge weight (e.g., distance or travel time)
 
-    Edge(Node *from, Node *to, double weight) : from(from), to(to), weight(weight) {}
+    Edge(PathNode *from, PathNode *to, double weight) : from(from), to(to), weight(weight) {}
 };
 
 // Class for PathFinder that implements A* and Bidirectional A* search
@@ -53,19 +53,19 @@ public:
     void addEdge(int fromId, int toId, double weight);
 
     // Find the shortest path between start and goal using Bidirectional A* search
-    std::vector<Node*> findShortestPath(int startId, int goalId);
+    std::vector<PathNode*> findShortestPath(int startId, int goalId);
 
 private:
     // Data structures for the graph
-    std::unordered_map<int, Node*> nodes;           // Node storage by ID
+    std::unordered_map<int, PathNode*> nodes;           // Node storage by ID
     std::unordered_map<int, std::vector<Edge>> graph; // Graph with edges by node ID
 
     // Helper functions for A* algorithm
-    static double heuristic(Node* a, Node* b);  // Heuristic function for A* (Manhattan distance)
-    static std::vector<Node*> reconstructPath(Node* start, Node* meetingPoint, Node* goal); // Reconstruct path from meeting point
+    static double heuristic(PathNode* a, PathNode* b);  // Heuristic function for A* (Manhattan distance)
+    static std::vector<PathNode*> reconstructPath(PathNode* start, PathNode* meetingPoint, PathNode* goal); // Reconstruct path from meeting point
 
     // A* search function
-    std::unordered_map<int, Node*> aStarSearch(int startId, int goalId, bool reverse = false);
+    std::unordered_map<int, PathNode*> aStarSearch(int startId, int goalId, bool reverse = false);
 };
 
 #endif // PATHFINDER_H

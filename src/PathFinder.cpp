@@ -8,27 +8,27 @@ PathFinder::PathFinder() = default;
 
 // Add a node to the graph
 void PathFinder::addNode(int id, double x, double y) {
-    nodes[id] = new Node(id, x, y);
+    nodes[id] = new PathNode(id, x, y);
 }
 
 // Add an edge to the graph
 void PathFinder::addEdge(int fromId, int toId, double weight) {
-    Node* fromNode = nodes[fromId];
-    Node* toNode = nodes[toId];
+    PathNode* fromNode = nodes[fromId];
+    PathNode* toNode = nodes[toId];
     graph[fromId].emplace_back(fromNode, toNode, weight);
     graph[toId].emplace_back(toNode, fromNode, weight); // assuming undirected graph
 }
 
 // Heuristic function for A* (Manhattan distance)
-double PathFinder::heuristic(Node* a, Node* b) {
+double PathFinder::heuristic(PathNode* a, PathNode* b) {
     // Manhattan Distance: |x1 - x2| + |y1 - y2|
     return std::abs(a->x - b->x) + std::abs(a->y - b->y);
 }
 
 // Reconstruct the path once the goal is found
-std::vector<Node*> PathFinder::reconstructPath(Node* start, Node* meetingPoint, Node* goal) {
-    std::vector<Node*> path;
-    Node* current = meetingPoint;
+std::vector<PathNode*> PathFinder::reconstructPath(PathNode* start, PathNode* meetingPoint, PathNode* goal) {
+    std::vector<PathNode*> path;
+    PathNode* current = meetingPoint;
 
     // Reconstruct path from the start to the meeting point
     while (current != start) {
@@ -50,18 +50,18 @@ std::vector<Node*> PathFinder::reconstructPath(Node* start, Node* meetingPoint, 
 }
 
 // A* search function for Bidirectional A*
-std::unordered_map<int, Node*> PathFinder::aStarSearch(int startId, int goalId, bool reverse) {
-    Node* startNode = nodes[startId];
-    Node* goalNode = nodes[goalId];
+std::unordered_map<int, PathNode*> PathFinder::aStarSearch(int startId, int goalId, bool reverse) {
+    PathNode* startNode = nodes[startId];
+    PathNode* goalNode = nodes[goalId];
 
     // Priority queue for A* (min-heap)
-    std::priority_queue<Node*, std::vector<Node*>, std::function<bool(Node*, Node*)>> openSet(
-        [](Node* a, Node* b) {
+    std::priority_queue<PathNode*, std::vector<PathNode*>, std::function<bool(PathNode*, PathNode*)>> openSet(
+        [](PathNode* a, PathNode* b) {
             return a->fCost() > b->fCost(); // prioritize by fCost
         }
     );
 
-    std::unordered_map<int, Node*> cameFrom; // Path tracking
+    std::unordered_map<int, PathNode*> cameFrom; // Path tracking
     std::unordered_map<int, double> gScore; // Distance from start to each node
     std::unordered_map<int, double> fScore; // Estimated total cost (gScore + heuristic)
 
@@ -70,7 +70,7 @@ std::unordered_map<int, Node*> PathFinder::aStarSearch(int startId, int goalId, 
     fScore[startId] = heuristic(startNode, goalNode);
 
     while (!openSet.empty()) {
-        Node* currentNode = openSet.top();
+        PathNode* currentNode = openSet.top();
         openSet.pop();
 
         // If we reached the goal
@@ -80,7 +80,7 @@ std::unordered_map<int, Node*> PathFinder::aStarSearch(int startId, int goalId, 
 
         // Explore neighbors
         for (const Edge& edge : graph[currentNode->id]) {
-            Node* neighbor = edge.to;
+            PathNode* neighbor = edge.to;
             double tentativeGScore = gScore[currentNode->id] + edge.weight;
 
             // If this is a better path
@@ -98,15 +98,15 @@ std::unordered_map<int, Node*> PathFinder::aStarSearch(int startId, int goalId, 
 }
 
 // Bidirectional A* Search to find the shortest path
-std::vector<Node*> PathFinder::findShortestPath(int startId, int goalId) {
+std::vector<PathNode*> PathFinder::findShortestPath(int startId, int goalId) {
     if (startId == goalId) return {}; // No path needed
 
     // Perform A* search from both directions
-    std::unordered_map<int, Node*> forwardPath = aStarSearch(startId, goalId);
-    std::unordered_map<int, Node*> reversePath = aStarSearch(goalId, startId, true);
+    std::unordered_map<int, PathNode*> forwardPath = aStarSearch(startId, goalId);
+    std::unordered_map<int, PathNode*> reversePath = aStarSearch(goalId, startId, true);
 
     // Try to find the meeting point between forward and reverse searches
-    Node* meetingPoint = nullptr;
+    PathNode* meetingPoint = nullptr;
     for (const auto& node : forwardPath) {
         if (reversePath.find(node.first) != reversePath.end()) {
             meetingPoint = node.second;
