@@ -1,144 +1,121 @@
 #include "PathFinder.h"
-#include <algorithm>
-#include <iostream>
-#include <cmath>
+#include <unordered_set>
 #include <queue>
-#include <functional>
-#include <set>
+#include <iostream>
+#include <algorithm>
 
-using namespace std;
+PathFinder::PathFinder() = default;
 
-// 构造函数：初始化路径规划器
-PathFinder::PathFinder(const OsmParser& parser, const PathFinderConfig& config)
-    : m_parser(parser), m_config(config) {
-    // 从 OsmParser 获取所有节点
-    const auto& nodes = parser.getNodes();
-    for (const auto& node : nodes) {
-        PathNode newNode{};
-        newNode.id = node.id;
-        newNode.lat = node.lat;
-        newNode.lon = node.lon;
-        newNode.cost = INFINITY;
-        newNode.parent = nullptr;
-        m_nodes.push_back(newNode);
-        m_nodeMap[node.id] = &m_nodes.back();
+// Add a node to the graph
+void PathFinder::addNode(int id, double x, double y) {
+    nodes[id] = new Node(id, x, y);
+}
+
+// Add an edge to the graph
+void PathFinder::addEdge(int fromId, int toId, double weight) {
+    Node* fromNode = nodes[fromId];
+    Node* toNode = nodes[toId];
+    graph[fromId].emplace_back(fromNode, toNode, weight);
+    graph[toId].emplace_back(toNode, fromNode, weight); // assuming undirected graph
+}
+
+// Heuristic function for A* (Manhattan distance)
+double PathFinder::heuristic(Node* a, Node* b) {
+    // Manhattan Distance: |x1 - x2| + |y1 - y2|
+    return std::abs(a->x - b->x) + std::abs(a->y - b->y);
+}
+
+// Reconstruct the path once the goal is found
+std::vector<Node*> PathFinder::reconstructPath(Node* start, Node* meetingPoint, Node* goal) {
+    std::vector<Node*> path;
+    Node* current = meetingPoint;
+
+    // Reconstruct path from the start to the meeting point
+    while (current != start) {
+        path.push_back(current);
+        current = current->parent;
     }
+    path.push_back(start);
+    std::reverse(path.begin(), path.end());
+
+    // Reconstruct path from the meeting point to the goal
+    current = meetingPoint;
+    while (current != goal) {
+        path.push_back(current);
+        current = current->parent;
+    }
+    path.push_back(goal);
+
+    return path;
 }
 
-// 计算两节点之间的代价（距离）
-double PathFinder::calculateCost(const PathNode& from, const PathNode& to) {
-    double dx = to.lat - from.lat;
-    double dy = to.lon - from.lon;
-    return sqrt(dx * dx + dy * dy);  // 计算欧几里得距离
-}
+// A* search function for Bidirectional A*
+std::unordered_map<int, Node*> PathFinder::aStarSearch(int startId, int goalId, bool reverse) {
+    Node* startNode = nodes[startId];
+    Node* goalNode = nodes[goalId];
 
-// 生成一个随机节点（模拟采样）
-PathNode PathFinder::generateRandomNode() const {
-    // 这里只是简单生成一个随机位置，可以根据实际需要进行调整
-    double lat = m_nodes[0].lat + (rand() % 1000) / 10000.0; // 随机纬度
-    double lon = m_nodes[0].lon + (rand() % 1000) / 10000.0; // 随机经度
-    PathNode randomNode{};
-    randomNode.lat = lat;
-    randomNode.lon = lon;
-    return randomNode;
-}
+    // Priority queue for A* (min-heap)
+    std::priority_queue<Node*, std::vector<Node*>, std::function<bool(Node*, Node*)>> openSet(
+        [](Node* a, Node* b) {
+            return a->fCost() > b->fCost(); // prioritize by fCost
+        }
+    );
 
-// 找到与给定节点最近的节点
-PathNode* PathFinder::findNearestNode(const PathNode& randomNode) const {
-    PathNode* nearestNode = nullptr;
-    double minCost = INFINITY;
-    for (const auto& node : m_nodes) {
-        double cost = calculateCost(randomNode, node);
-        if (cost < minCost) {
-            minCost = cost;
-            nearestNode = const_cast<PathNode*>(&node); // 获取节点的指针
+    std::unordered_map<int, Node*> cameFrom; // Path tracking
+    std::unordered_map<int, double> gScore; // Distance from start to each node
+    std::unordered_map<int, double> fScore; // Estimated total cost (gScore + heuristic)
+
+    openSet.push(startNode);
+    gScore[startId] = 0.0;
+    fScore[startId] = heuristic(startNode, goalNode);
+
+    while (!openSet.empty()) {
+        Node* currentNode = openSet.top();
+        openSet.pop();
+
+        // If we reached the goal
+        if (currentNode == goalNode) {
+            return cameFrom;
+        }
+
+        // Explore neighbors
+        for (const Edge& edge : graph[currentNode->id]) {
+            Node* neighbor = edge.to;
+            double tentativeGScore = gScore[currentNode->id] + edge.weight;
+
+            // If this is a better path
+            if (tentativeGScore < gScore[neighbor->id]) {
+                neighbor->parent = currentNode; // Set the parent of the neighbor
+                cameFrom[neighbor->id] = currentNode;
+                gScore[neighbor->id] = tentativeGScore;
+                fScore[neighbor->id] = gScore[neighbor->id] + heuristic(neighbor, goalNode);
+                openSet.push(neighbor);
+            }
         }
     }
-    return nearestNode;
+
+    return {}; // Return an empty map if no path found
 }
 
-// 判断两个节点之间的路径是否有效（这里可以添加障碍检测）
-bool PathFinder::isValidEdge(const PathNode& from, const PathNode& to) {
-    // 简单的有效性判断，只是检查两点间的直线距离
-    return true; // 假设没有障碍物
-}
+// Bidirectional A* Search to find the shortest path
+std::vector<Node*> PathFinder::findShortestPath(int startId, int goalId) {
+    if (startId == goalId) return {}; // No path needed
 
-// 添加一个新的节点到树中
-void PathFinder::addNode(const PathNode& node) {
-    m_nodes.push_back(node);
-    m_nodeMap[node.id] = &m_nodes.back();
-}
+    // Perform A* search from both directions
+    std::unordered_map<int, Node*> forwardPath = aStarSearch(startId, goalId);
+    std::unordered_map<int, Node*> reversePath = aStarSearch(goalId, startId, true);
 
-// 主路径规划函数：使用 Informed RRT* 算法
-bool PathFinder::planPath(long long startNodeId, long long goalNodeId) {
-    PathNode* startNode = m_nodeMap[startNodeId];
-    PathNode* goalNode = m_nodeMap[goalNodeId];
-
-    // 初始化起点
-    startNode->cost = 0.0;
-    startNode->parent = nullptr;
-
-    // 启动随机树
-    for (int iter = 0; iter < m_config.maxIterations; ++iter) {
-        // 1. 生成一个随机节点
-        PathNode randomNode = generateRandomNode();
-
-        // 2. 找到距离随机节点最近的节点
-        PathNode* nearestNode = findNearestNode(randomNode);
-
-        // 3. 计算从最近节点到随机节点的步长
-        double cost = calculateCost(*nearestNode, randomNode);
-        if (cost > m_config.maxStepSize) {
-            // 限制最大步长
-            randomNode.lat = nearestNode->lat + m_config.maxStepSize * (randomNode.lat - nearestNode->lat) / cost;
-            randomNode.lon = nearestNode->lon + m_config.maxStepSize * (randomNode.lon - nearestNode->lon) / cost;
-        }
-
-        // 4. 检查路径是否有效
-        if (!isValidEdge(*nearestNode, randomNode)) {
-            continue;
-        }
-
-        // 5. 计算新的代价，并添加节点
-        randomNode.cost = nearestNode->cost + calculateCost(*nearestNode, randomNode);
-        randomNode.parent = nearestNode;
-        addNode(randomNode);
-
-        // 6. 如果到达目标区域，停止搜索
-        if (calculateCost(randomNode, *goalNode) < m_config.goalRadius) {
-            goalNode->parent = &randomNode;
+    // Try to find the meeting point between forward and reverse searches
+    Node* meetingPoint = nullptr;
+    for (const auto& node : forwardPath) {
+        if (reversePath.find(node.first) != reversePath.end()) {
+            meetingPoint = node.second;
             break;
         }
     }
 
-    // 从目标节点回溯路径
-    PathNode* currentNode = goalNode;
-    m_path.clear();
-    while (currentNode != nullptr) {
-        m_path.push_back(*currentNode);
-        currentNode = currentNode->parent;
-    }
+    // If no meeting point found, return empty path
+    if (!meetingPoint) return {};
 
-    // 如果路径为空，则返回 false
-    reverse(m_path.begin(), m_path.end());
-    return !m_path.empty();
-}
-
-// 获取计算得到的路径
-std::vector<PathNode> PathFinder::getPath() const {
-    return m_path;
-}
-
-void PathFinder::printPath() const {
-    if (m_path.empty()) {
-        std::cout << "No path found!" << std::endl;
-        return;
-    }
-    std::cout << "Found path with " << m_path.size() << " nodes:" << std::endl;
-    for (const auto& node : m_path) {
-        std::cout << "Node ID: " << node.id
-                  << ", Latitude: " << node.lat
-                  << ", Longitude: " << node.lon
-                  << ", Cost: " << node.cost << std::endl;
-    }
+    return reconstructPath(nodes[startId], meetingPoint, nodes[goalId]);
 }

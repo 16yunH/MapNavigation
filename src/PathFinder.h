@@ -2,49 +2,70 @@
 #define PATHFINDER_H
 
 #include <vector>
-#include <map>
+#include <unordered_map>
+#include <queue>
+#include <functional>
 #include <cmath>
-#include "OsmParser.h"
+#include <limits>
 
-// 结构体：表示路径规划中的一个节点
-struct PathNode {
-    long long id;
-    double lat, lon; // 经纬度
-    double cost;     // 到起点的代价（路径长度）
-    PathNode* parent;    // 父节点，帮助重建路径
+// Structure to represent a graph node (e.g., an intersection or point)
+struct Node {
+    int id;                // Node identifier (e.g., intersection ID)
+    double x, y;           // Coordinates of the node (longitude, latitude)
+    Node* parent = nullptr; // Pointer to the parent node (used for path reconstruction)
+    double gScore = std::numeric_limits<double>::infinity(); // Cost from start to this node
+    double fScore = std::numeric_limits<double>::infinity(); // Estimated total cost (gScore + heuristic)
+
+    Node(int id, double x, double y) : id(id), x(x), y(y) {}
+
+    bool operator==(const Node &other) const {
+        return id == other.id;
+    }
+
+    // fScore calculation
+    double fCost() const {
+        return fScore;
+    }
+
+    // Optional: Overload < operator for priority queue comparison
+    bool operator<(const Node &other) const {
+        return fScore > other.fScore;  // Priority queue will prioritize lower fScore
+    }
 };
 
-// 结构体：表示路径规划的参数设置
-struct PathFinderConfig {
-    double maxStepSize; // 最大步长
-    double epsilon;     // 惩罚项
-    double goalRadius;  // 目标半径
-    double maxIterations; // 最大迭代次数
+// Structure to represent an edge between two nodes
+struct Edge {
+    Node *from, *to;
+    double weight; // Edge weight (e.g., distance or travel time)
+
+    Edge(Node *from, Node *to, double weight) : from(from), to(to), weight(weight) {}
 };
 
-// PathFinder 类：实现路径规划逻辑
+// Class for PathFinder that implements A* and Bidirectional A* search
 class PathFinder {
 public:
-    PathFinder(const OsmParser& parser, const PathFinderConfig& config); // 构造函数
-    bool planPath(long long startNodeId, long long goalNodeId);          // 路径规划主函数
-    [[nodiscard]] std::vector<PathNode> getPath() const; // 获取路径
-    void printPath() const; // 输出找到的最短路径
+    PathFinder();
+
+    // Add a node to the graph
+    void addNode(int id, double x, double y);
+
+    // Add an edge between two nodes with a weight
+    void addEdge(int fromId, int toId, double weight);
+
+    // Find the shortest path between start and goal using Bidirectional A* search
+    std::vector<Node*> findShortestPath(int startId, int goalId);
 
 private:
-    // 工具函数
-    static double calculateCost(const PathNode& from, const PathNode& to) ;       // 计算两节点间的距离
-    [[nodiscard]] PathNode* findNearestNode(const PathNode& randomNode) const;                // 找到距离随机节点最近的节点
-    static bool isValidEdge(const PathNode& from, const PathNode& to) ;           // 判断路径是否有效（不与障碍物相交）
-    void addNode(const PathNode& node);                                     // 添加节点到树中
+    // Data structures for the graph
+    std::unordered_map<int, Node*> nodes;           // Node storage by ID
+    std::unordered_map<int, std::vector<Edge>> graph; // Graph with edges by node ID
 
-    const OsmParser& m_parser; // OsmParser 用于获取地图数据
-    PathFinderConfig m_config; // 路径规划参数
-    std::vector<PathNode> m_nodes; // 存储所有的节点（从 OSM 数据解析得到）
-    std::vector<PathNode> m_path;  // 规划出来的路径
-    std::map<long long, PathNode*> m_nodeMap; // 节点 ID 到 PathNode 对象的映射
+    // Helper functions for A* algorithm
+    static double heuristic(Node* a, Node* b);  // Heuristic function for A* (Manhattan distance)
+    static std::vector<Node*> reconstructPath(Node* start, Node* meetingPoint, Node* goal); // Reconstruct path from meeting point
 
-    // 随机采样生成节点
-    [[nodiscard]] PathNode generateRandomNode() const;
+    // A* search function
+    std::unordered_map<int, Node*> aStarSearch(int startId, int goalId, bool reverse = false);
 };
 
 #endif // PATHFINDER_H
