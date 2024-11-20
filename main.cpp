@@ -59,27 +59,21 @@ int main() {
         cerr << "Failed to parse OSM file "  << endl;
         return 1;
     }
-
     // Step 2: Create a PathFinder instance
     PathFinder pathFinder;
-
     // Step 3: Build the graph by adding nodes and edges from the OSM file
     const vector<Node>& nodes = osmParser.getNodes();
     const vector<Way>& ways = osmParser.getWays();
-
     // Adding nodes to the PathFinder graph
     for (const Node& osmNode : nodes) {
         pathFinder.addNode(osmNode.id, osmNode.lon, osmNode.lat);
     }
-
     // Step 4: Test the pathfinding functionality
     // You can replace startId and goalId with actual node IDs based on your OSM file
-    long long startId = 655345433;  // Use the first node as the start
+    long long startId = 946031315;  // Use the first node as the start
     long long goalId = 946031154;   // Use the second node as the goal
-
     // Find the shortest path using Bidirectional A* search
     vector<PathNode*> path = pathFinder.findShortestPath(startId, goalId);
-
     // Step 5: Print the result path
     if (path.empty()) {
         cout << "No path found between nodes " << startId << " and " << goalId << endl;
@@ -89,6 +83,5 @@ int main() {
             cout << "Node ID: " << node->id << " (Lat: " << node->y << ", Lon: " << node->x << ")" << endl;
         }
     }
-
     return 0;
 }
