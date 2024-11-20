@@ -113,7 +113,6 @@ std::vector<long long> PathFinder::findShortestPath(long long startId, long long
             break;
         }
     }
-
     // If no meeting point is found, return empty path
     if (meetingPoint == nullptr) return {};
 
