@@ -2,3 +2,8 @@
 11	86	7537358383207134	CMakeFiles/MapNavigation.dir/src/PathFinder.cpp.obj	818b607e04659d0a
 18	88	7537358383276948	CMakeFiles/MapNavigation.dir/src/OsmParser.cpp.obj	b32762edeca5dfa4
 25	543	7537358383346956	CMakeFiles/MapNavigation.dir/lib/tinyxml2.cpp.obj	7f9913f67a965780
+16	1068	7537870229045515	CMakeFiles/MapNavigation.dir/main.cpp.obj	3294f7c079a5f1b9
+32	1264	7537870229199339	CMakeFiles/MapNavigation.dir/src/OsmParser.cpp.obj	b32762edeca5dfa4
+1264	1713	7537870241510486	MapNavigation.exe	926d9ab13b7f1f96
+10	839	7537871074490868	CMakeFiles/MapNavigation.dir/main.cpp.obj	3294f7c079a5f1b9
+840	1245	7537871082787770	MapNavigation.exe	926d9ab13b7f1f96
