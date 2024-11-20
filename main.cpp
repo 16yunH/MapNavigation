@@ -86,7 +86,7 @@ int main() {
     // Step 4: Test the pathfinding functionality
     // You can replace startId and goalId with actual node IDs based on your OSM file
     int startId = nodes[0].id;  // Use the first node as the start
-    int goalId = nodes[2].id;   // Use the second node as the goal
+    int goalId = nodes[7].id;   // Use the second node as the goal
 
     // Find the shortest path using Bidirectional A* search
     vector<PathNode*> path = pathFinder.findShortestPath(startId, goalId);
