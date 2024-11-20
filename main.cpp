@@ -12,6 +12,9 @@ int main() {
 }
 */
 
+
+//example code for Praser
+/*
 #include <iostream>
 #include "src/OsmParser.h"
 
@@ -37,3 +40,4 @@ int main() {
 
     return 0;
 }
+*/
