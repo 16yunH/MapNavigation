@@ -27,12 +27,12 @@ class PathFinder {
 public:
     PathFinder(const OsmParser& parser, const PathFinderConfig& config); // 构造函数
     bool planPath(long long startNodeId, long long goalNodeId);          // 路径规划主函数
-    std::vector<PathNode> getPath() const; // 获取路径
+    [[nodiscard]] std::vector<PathNode> getPath() const; // 获取路径
 
 private:
     // 工具函数
     static double calculateCost(const PathNode& from, const PathNode& to) ;       // 计算两节点间的距离
-    PathNode* findNearestNode(const PathNode& randomNode) const;                // 找到距离随机节点最近的节点
+    [[nodiscard]] PathNode* findNearestNode(const PathNode& randomNode) const;                // 找到距离随机节点最近的节点
     static bool isValidEdge(const PathNode& from, const PathNode& to) ;           // 判断路径是否有效（不与障碍物相交）
     void addNode(const PathNode& node);                                     // 添加节点到树中
 
@@ -43,7 +43,7 @@ private:
     std::map<long long, PathNode*> m_nodeMap; // 节点 ID 到 PathNode 对象的映射
 
     // 随机采样生成节点
-    PathNode generateRandomNode() const;
+    [[nodiscard]] PathNode generateRandomNode() const;
 };
 
 #endif // PATHFINDER_H
