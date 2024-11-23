@@ -39,7 +39,7 @@
 				{
 					"directoryIndex" : 0,
 					"id" : "MapNavigation::@6890427a1f51a3e7e1df",
-					"jsonFile" : "target-MapNavigation-Debug-2b89c8b86678effbb406.json",
+					"jsonFile" : "target-MapNavigation-Debug-8804071415f4a27e5c0d.json",
 					"name" : "MapNavigation",
 					"projectIndex" : 0
 				}
@@ -49,12 +49,12 @@
 	"kind" : "codemodel",
 	"paths" : 
 	{
-		"build" : "D:/3.code/CLionProjects/MapNavigation/build",
+		"build" : "D:/3.code/CLionProjects/MapNavigation/cmake-build-debug",
 		"source" : "D:/3.code/CLionProjects/MapNavigation"
 	},
 	"version" : 
 	{
 		"major" : 2,
-		"minor" : 7
+		"minor" : 6
 	}
 }

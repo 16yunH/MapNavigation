@@ -38,7 +38,7 @@
 			"compileCommandFragments" : 
 			[
 				{
-					"fragment" : "-g -std=gnu++17"
+					"fragment" : "-g -fdiagnostics-color=always"
 				}
 			],
 			"language" : "CXX",
@@ -104,7 +104,8 @@
 			[
 				2,
 				4,
-				5
+				5,
+				7
 			]
 		}
 	],
@@ -148,6 +149,11 @@
 			"compileGroupIndex" : 0,
 			"path" : "lib/tinyxml2.cpp",
 			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "lib/httplib.h",
+			"sourceGroupIndex" : 1
 		}
 	],
 	"type" : "EXECUTABLE"
