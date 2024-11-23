@@ -1,3 +1,10 @@
+
+#include "src/PathFinder.h"
+#include "src/OsmParser.h"
+#include "lib/httplib.h"
+#include "lib/tinyxml2.h"
+#include <iostream>
+
 /*
 #include <iostream>
 #include <vector>
@@ -42,9 +49,7 @@ int main() {
 }
 */
 
-#include "src/PathFinder.h"
-#include "src/OsmParser.h"
-#include <iostream>
+
 
 int main() {
     // Load the OSM data
