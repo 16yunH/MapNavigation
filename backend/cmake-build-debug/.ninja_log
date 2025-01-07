@@ -1,0 +1,15 @@
+# ninja log v6
+23	2494	7549964658019905	CMakeFiles/MapNavigation.dir/src/PathFinder.cpp.obj	6f99c45b401b2160
+31	2043	7549964658089898	CMakeFiles/MapNavigation.dir/src/OsmParser.cpp.obj	9b19256553f4175e
+40	896	7549964658110493	CMakeFiles/MapNavigation.dir/lib/tinyxml2.cpp.obj	ed501bac3158ab30
+18	1348	7549970107224192	CMakeFiles/MapNavigation.dir/main.cpp.obj	dba7974cd8d2936f
+1349	2290	7549970120539330	MapNavigation.exe	926d9ab13b7f1f96
+12	1451	7549998767162361	CMakeFiles/MapNavigation.dir/main.cpp.obj	dba7974cd8d2936f
+25	2322	7549998767295036	CMakeFiles/MapNavigation.dir/src/PathFinder.cpp.obj	6f99c45b401b2160
+2332	3213	7549998790366705	MapNavigation.exe	926d9ab13b7f1f96
+8	1431	7550005991585745	CMakeFiles/MapNavigation.dir/main.cpp.obj	dba7974cd8d2936f
+1432	2368	7550006005817318	MapNavigation.exe	926d9ab13b7f1f96
+12	1442	7550006252189436	CMakeFiles/MapNavigation.dir/main.cpp.obj	dba7974cd8d2936f
+1443	2359	7550006266499638	MapNavigation.exe	926d9ab13b7f1f96
+12	1508	7550049396627894	CMakeFiles/MapNavigation.dir/main.cpp.obj	dba7974cd8d2936f
+1510	2371	7550049411605626	MapNavigation.exe	926d9ab13b7f1f96

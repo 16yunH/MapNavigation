@@ -1,0 +1,83 @@
+import LMap from './components/map';
+import LTileLayer from './components/tileLayer';
+import LWmsTileLayer from './components/wmsTileLayer';
+import LWmtsTileLayer from './components/wmtsTileLayer';
+import LImageOverlay from './components/imageOverlay';
+import LImageOverlayRotated from './components/imageOverlayRotated';
+import LVideoOverlay from './components/videoOverlay';
+import LBaseLayer from './components/baseLayer';
+import LDrawLayer from './components/drawLayer';
+
+import LLayerGroup from './components/layerGroup';
+import LFeatureGroup from './components/featureGroup';
+import LGeoJson from './components/geoJson';
+
+import LPolyline from './components/polyline';
+import LPolygon from './components/polygon';
+import LRectangle from './components/rectangle';
+import LCircle from './components/circle';
+import LCircleMarker from './components/circleMarker';
+
+import LMarker from './components/marker';
+import LPopup from './components/popup';
+import LTooltip from './components/tooltip';
+
+
+import "leaflet/dist/leaflet.css";
+
+
+const components = [
+    LMap,
+    LTileLayer,
+    LWmsTileLayer,
+    LImageOverlay,
+    LImageOverlayRotated,
+    LVideoOverlay,
+    LWmtsTileLayer,
+    LLayerGroup,
+    LFeatureGroup,
+    LGeoJson,
+    LBaseLayer,
+    LDrawLayer,
+    LPolyline,
+    LPolygon,
+    LRectangle,
+    LCircle,
+    LCircleMarker,
+    LMarker,
+    LPopup,
+    LTooltip
+];
+
+
+const install = function(app, opts = {}) {
+    components.forEach(component => {
+        app.component(component.name, component);
+    });
+}
+
+
+export default install
+
+export  {
+    LMap,
+    LTileLayer,
+    LWmsTileLayer,
+    LImageOverlay,
+    LImageOverlayRotated,
+    LVideoOverlay,
+    LWmtsTileLayer,
+    LLayerGroup,
+    LFeatureGroup,
+    LGeoJson,
+    LBaseLayer,
+    LDrawLayer,
+    LPolyline,
+    LPolygon,
+    LRectangle,
+    LCircle,
+    LCircleMarker,
+    LMarker,
+    LPopup,
+    LTooltip
+}

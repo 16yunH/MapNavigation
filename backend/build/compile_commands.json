@@ -1,0 +1,38 @@
+[
+{
+  "directory": "D:/3.code/CLionProjects/MapNaviBackend/build",
+  "command": "C:\\PROGRA~1\\mingw64\\bin\\G__~1.EXE   -g -std=gnu++17 -o CMakeFiles\\MapNavigation.dir\\main.cpp.obj -c D:\\3.code\\CLionProjects\\MapNaviBackend\\main.cpp",
+  "file": "D:/3.code/CLionProjects/MapNaviBackend/main.cpp",
+  "output": "CMakeFiles/MapNavigation.dir/main.cpp.obj"
+},
+{
+  "directory": "D:/3.code/CLionProjects/MapNaviBackend/build",
+  "command": "C:\\PROGRA~1\\mingw64\\bin\\G__~1.EXE   -g -std=gnu++17 -o CMakeFiles\\MapNavigation.dir\\src\\PathFinder.cpp.obj -c D:\\3.code\\CLionProjects\\MapNaviBackend\\src\\PathFinder.cpp",
+  "file": "D:/3.code/CLionProjects/MapNaviBackend/src/PathFinder.cpp",
+  "output": "CMakeFiles/MapNavigation.dir/src/PathFinder.cpp.obj"
+},
+{
+  "directory": "D:/3.code/CLionProjects/MapNaviBackend/build",
+  "command": "C:\\PROGRA~1\\mingw64\\bin\\G__~1.EXE   -g -std=gnu++17 -o CMakeFiles\\MapNavigation.dir\\src\\OsmParser.cpp.obj -c D:\\3.code\\CLionProjects\\MapNaviBackend\\src\\OsmParser.cpp",
+  "file": "D:/3.code/CLionProjects/MapNaviBackend/src/OsmParser.cpp",
+  "output": "CMakeFiles/MapNavigation.dir/src/OsmParser.cpp.obj"
+},
+{
+  "directory": "D:/3.code/CLionProjects/MapNaviBackend/build",
+  "command": "C:\\PROGRA~1\\mingw64\\bin\\G__~1.EXE   -g -std=gnu++17 -o CMakeFiles\\MapNavigation.dir\\lib\\tinyxml2.cpp.obj -c D:\\3.code\\CLionProjects\\MapNaviBackend\\lib\\tinyxml2.cpp",
+  "file": "D:/3.code/CLionProjects/MapNaviBackend/lib/tinyxml2.cpp",
+  "output": "CMakeFiles/MapNavigation.dir/lib/tinyxml2.cpp.obj"
+},
+{
+  "directory": "D:/3.code/CLionProjects/MapNaviBackend/build",
+  "command": "C:\\PROGRA~1\\mingw64\\bin\\G__~1.EXE   -g -std=gnu++17 -o CMakeFiles\\MapNavigation.dir\\src\\API\\handlers.cpp.obj -c D:\\3.code\\CLionProjects\\MapNaviBackend\\src\\API\\handlers.cpp",
+  "file": "D:/3.code/CLionProjects/MapNaviBackend/src/API/handlers.cpp",
+  "output": "CMakeFiles/MapNavigation.dir/src/API/handlers.cpp.obj"
+},
+{
+  "directory": "D:/3.code/CLionProjects/MapNaviBackend/build",
+  "command": "C:\\PROGRA~1\\mingw64\\bin\\G__~1.EXE   -g -std=gnu++17 -o CMakeFiles\\MapNavigation.dir\\src\\API\\routes.cpp.obj -c D:\\3.code\\CLionProjects\\MapNaviBackend\\src\\API\\routes.cpp",
+  "file": "D:/3.code/CLionProjects/MapNaviBackend/src/API/routes.cpp",
+  "output": "CMakeFiles/MapNavigation.dir/src/API/routes.cpp.obj"
+}
+]
