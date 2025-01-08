@@ -1,6 +1,7 @@
 # MapNavigation
 
 A navigation and path-planning system focused on Yingtan and Guixi cities in Jiangxi Province, China. This project combines OpenStreetMap data with Gaode Maps API to provide accurate routing and location search capabilities.
+The interactive page is in Chinese.
 
 ## Features
 
