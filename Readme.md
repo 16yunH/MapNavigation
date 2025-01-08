@@ -84,4 +84,4 @@ This project focuses on Guixi, a county-level city in Yingtan, Jiangxi Province.
 I was born in Guixi and grew up in Guixi, so I have a deep connection to these cities. Due to my studies and work, I have fewer and fewer opportunities to return to Guixi. This project is a way for me to give back to my hometown and contribute to its development (even if only in a small way, I hope).
 
 ## Contact
-If you have any questions or suggestions, please feel free to contact me at [this](mailto:hy20051123@gmail.com).
+If you have any questions or suggestions, please feel free to contact me by email: [hy20051123@gmail.com](mailto:hy20051123@gmail.com).
