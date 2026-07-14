@@ -1,0 +1,19 @@
+# Local secrets and environment overrides
+.env
+.env.*
+!.env.example
+!**/.env.example
+
+# Frontend dependencies and build output
+node_modules/
+dist/
+
+# CMake and IDE build output
+build/
+cmake-build-*/
+out/
+
+# IDE and operating-system files
+.idea/
+.vscode/
+.DS_Store
