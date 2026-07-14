@@ -1,4 +1,5 @@
 #include <iostream>
+#include <cstdint>
 #include <cmath>
 #include <cstdlib>
 #include <filesystem>
@@ -200,7 +201,7 @@ int main(int argc, char* argv[]) {
             }
 
             roads.push_back({
-                {"id", roadId},
+                {"id", static_cast<std::int64_t>(roadId)},
                 {"name", road.name},
                 {"type", road.type},
                 {"coordinates", std::move(coordinates)}
