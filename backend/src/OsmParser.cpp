@@ -1,8 +1,6 @@
 #include "OsmParser.h"
 #include <cmath>
 #include <algorithm>
-#include <limits>
-#include <queue>
 
 namespace road_network {
 
@@ -58,13 +56,6 @@ double RoadSegment::calculateLength(const std::unordered_map<long long, RoadNode
     return totalLength;
 }
 
-// SpatialNode实现
-SpatialNode::SpatialNode(const RoadNode* n) : node(n), left(nullptr), right(nullptr) {}
-
-// RoadNetwork实现
-RoadNetwork::RoadNetwork() : spatialIndex_(nullptr) {}
-RoadNetwork::~RoadNetwork() = default;
-
 bool RoadNetwork::loadFromOsm(const std::string& filename) {
     tinyxml2::XMLDocument doc;
     // 尝试加载OSM文件
@@ -100,7 +91,6 @@ bool RoadNetwork::loadFromOsm(const std::string& filename) {
     // 构建路网结构
     createRoadConnections();
     processIntersections();
-    buildSpatialIndex();
 
     return true;
 }
@@ -130,9 +120,12 @@ void RoadNetwork::parseRoadWay(tinyxml2::XMLElement* wayElement) {
     it = segment.tags.find("name");
     segment.name = (it != segment.tags.end()) ? it->second : "";
 
-    // 检查是否为单向道路
+    // 检查是否为单向道路。OSM 的 -1 表示与节点顺序相反，先反转节点序列，
+    // 后续图构建即可统一按正向处理。
     it = segment.tags.find("oneway");
-    segment.oneWay = (it != segment.tags.end() && (it->second == "yes" || it->second == "1"));
+    const bool reverseOneWay = it != segment.tags.end() && it->second == "-1";
+    segment.oneWay = it != segment.tags.end() &&
+        (it->second == "yes" || it->second == "1" || reverseOneWay);
 
     // 获取车道数
     it = segment.tags.find("lanes");
@@ -150,6 +143,10 @@ void RoadNetwork::parseRoadWay(tinyxml2::XMLElement* wayElement) {
         long long nodeId = ndElement->Int64Attribute("ref");
         segment.nodeIds.push_back(nodeId);
         roadNodes_.insert(nodeId);  // 记录这是道路节点
+    }
+
+    if (reverseOneWay) {
+        std::reverse(segment.nodeIds.begin(), segment.nodeIds.end());
     }
 
     // 只保存有效的道路（至少有两个节点）
@@ -185,75 +182,21 @@ void RoadNetwork::parseTags(tinyxml2::XMLElement* element,
 
 ProjectedPoint RoadNetwork::findNearestPointOnRoad(double lat, double lon) const {
     ProjectedPoint nearestPoint;
-    nearestPoint.distance = std::numeric_limits<double>::max();
 
-    // 首先找到最近的节点来缩小搜索范围
-    long long nearestNodeId = findNearestNode(lat, lon);
-    if (nearestNodeId == -1) return nearestPoint;
-
-    // 创建一个已检查道路的集合，避免重复检查
-    std::unordered_set<long long> checkedRoads;
-
-    // 从最近的节点开始，检查所有相连的道路
-    std::queue<long long> nodeQueue;
-    nodeQueue.push(nearestNodeId);
-    std::unordered_set<long long> visitedNodes;
-
-    while (!nodeQueue.empty()) {
-        long long currentNodeId = nodeQueue.front();
-        nodeQueue.pop();
-
-        if (!visitedNodes.insert(currentNodeId).second) {
-            continue;  // 节点已访问
-        }
-
-        const RoadNode& currentNode = nodes_.at(currentNodeId);
-
-        // 检查与当前节点相连的所有道路
-        for (const auto& roadPair : roads_) {
-            const RoadSegment& road = roadPair.second;
-
-            // 如果已经检查过这条路，跳过
-            if (!checkedRoads.insert(road.id).second) {
+    // 全量扫描每个道路段。旧实现实际上也会在第一次循环扫描全部道路，
+    // 却先依赖只包含端点/路口的 KD 树，导致环路等图形完全无法投影。
+    for (const auto& [roadId, road] : roads_) {
+        for (size_t i = 0; i + 1 < road.nodeIds.size(); ++i) {
+            const auto node1 = nodes_.find(road.nodeIds[i]);
+            const auto node2 = nodes_.find(road.nodeIds[i + 1]);
+            if (node1 == nodes_.end() || node2 == nodes_.end()) {
                 continue;
             }
 
-            // 检查这条路的所有线段
-            for (size_t i = 0; i < road.nodeIds.size() - 1; ++i) {
-                long long node1Id = road.nodeIds[i];
-                long long node2Id = road.nodeIds[i + 1];
-
-                const RoadNode& node1 = nodes_.at(node1Id);
-                const RoadNode& node2 = nodes_.at(node2Id);
-
-                // 计算点到当前线段的投影
-                ProjectedPoint projected = projectPointToSegment(
-                    lat, lon, node1, node2, road.id, road.name);
-
-                // 更新最近点
-                if (projected.distance < nearestPoint.distance) {
-                    nearestPoint = projected;
-                }
-            }
-        }
-
-        // 如果当前最近点的距离小于到下一层节点的最小距离，可以提前结束搜索
-        // 这是一个优化，避免不必要的搜索
-        double minNextDistance = std::numeric_limits<double>::max();
-        for (const auto& neighbor : currentNode.neighbors) {
-            const RoadNode& neighborNode = nodes_.at(neighbor.first);
-            double dist = GeoPoint{lat, lon}.distanceTo(neighborNode.location);
-            minNextDistance = std::min(minNextDistance, dist);
-        }
-
-        if (nearestPoint.distance <= minNextDistance * 0.5) {
-            break;  // 已找到最近点，可以结束搜索
-        }
-
-        // 将相邻节点加入队列
-        for (const auto& neighbor : currentNode.neighbors) {
-            if (!visitedNodes.count(neighbor.first)) {
-                nodeQueue.push(neighbor.first);
+            ProjectedPoint projected = projectPointToSegment(
+                lat, lon, node1->second, node2->second, roadId, road.name);
+            if (projected.distance < nearestPoint.distance) {
+                nearestPoint = std::move(projected);
             }
         }
     }
@@ -373,96 +316,6 @@ void RoadNetwork::processIntersections() {
     }
 }
 
-void RoadNetwork::buildSpatialIndex() {
-    // 收集所有需要建立索引的节点
-    // 优化：只对交叉路口和端点建立索引，可以显著减少空间开销
-    std::vector<const RoadNode*> indexNodes;
-    for (const auto& [nodeId, node] : nodes_) {
-        if (node.type != RoadNode::Type::NORMAL) {
-            indexNodes.push_back(&node);
-        }
-    }
-
-    // 构建KD树
-    spatialIndex_ = buildKDTree(indexNodes);
-}
-
-std::unique_ptr<SpatialNode> RoadNetwork::buildKDTree(
-    std::vector<const RoadNode*>& nodes, int depth) {
-
-    // 基本情况：空节点集
-    if (nodes.empty()) {
-        return nullptr;
-    }
-
-    // 确定当前维度：深度为偶数时使用纬度，奇数时使用经度
-    int axis = depth % 2;
-
-    // 根据当前轴对节点进行排序
-    std::sort(nodes.begin(), nodes.end(),
-        [axis](const RoadNode* a, const RoadNode* b) {
-            if (axis == 0) {
-                return a->location.lat < b->location.lat;
-            } else {
-                return a->location.lon < b->location.lon;
-            }
-        });
-
-    // 选择中位数节点作为当前节点
-    size_t medianIdx = nodes.size() / 2;
-    auto node = std::make_unique<SpatialNode>(nodes[medianIdx]);
-
-    // 递归构建左子树（包含较小值的节点）
-    std::vector<const RoadNode*> leftNodes(nodes.begin(), nodes.begin() + medianIdx);
-    node->left = buildKDTree(leftNodes, depth + 1);
-
-    // 递归构建右子树（包含较大值的节点）
-    std::vector<const RoadNode*> rightNodes(nodes.begin() + medianIdx + 1, nodes.end());
-    node->right = buildKDTree(rightNodes, depth + 1);
-
-    return node;
-}
-
-void RoadNetwork::findNearestNodeImpl(
-    const SpatialNode* node, const GeoPoint& target,
-    const RoadNode*& best, double& bestDist, int depth) {
-
-    if (!node) return;
-
-    // 计算当前节点到目标点的距离
-    double dist = node->node->location.distanceTo(target);
-    if (dist < bestDist) {
-        bestDist = dist;
-        best = node->node;
-    }
-
-    // 确定搜索顺序
-    int axis = depth % 2;
-    double delta = axis == 0 ?
-        (target.lat - node->node->location.lat) :
-        (target.lon - node->node->location.lon);
-
-    // 根据目标点位置决定优先搜索哪个子树
-    const SpatialNode* firstSide = delta < 0 ? node->left.get() : node->right.get();
-    const SpatialNode* secondSide = delta < 0 ? node->right.get() : node->left.get();
-
-    // 递归搜索更可能包含最近点的子树
-    findNearestNodeImpl(firstSide, target, best, bestDist, depth + 1);
-
-    // 判断是否需要搜索另一个子树
-    // 如果垂直距离小于当前最佳距离，另一个子树可能包含更近的点
-    GeoPoint testPoint = target;
-    if (axis == 0) {
-        testPoint.lat = node->node->location.lat;
-    } else {
-        testPoint.lon = node->node->location.lon;
-    }
-
-    if (target.distanceTo(testPoint) < bestDist) {
-        findNearestNodeImpl(secondSide, target, best, bestDist, depth + 1);
-    }
-}
-
 double RoadNetwork::calculateSpeedLimit(const std::string& highwayType) {
     // 根据道路类型返回默认速度限制（km/h）
     static const std::unordered_map<std::string, double> speedLimits = {
@@ -503,18 +356,6 @@ int RoadNetwork::calculateRoadPriority(const std::string& highwayType) {
 
     auto it = priorities.find(highwayType);
     return it != priorities.end() ? it->second : 1;  // 默认最低优先级
-}
-
-long long RoadNetwork::findNearestNode(double lat, double lon) const {
-    if (!spatialIndex_) return -1;
-
-    const RoadNode* best = nullptr;
-    double bestDist = std::numeric_limits<double>::max();
-    GeoPoint target{lat, lon};
-
-    findNearestNodeImpl(spatialIndex_.get(), target, best, bestDist, 0);
-
-    return best ? best->id : -1;
 }
 
 // 访问器方法实现

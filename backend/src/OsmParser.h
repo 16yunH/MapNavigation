@@ -5,7 +5,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-#include <memory>
+#include <limits>
 #include "tinyxml2.h"
 
 namespace road_network {
@@ -69,34 +69,21 @@ struct RoadSegment {
     double calculateLength(const std::unordered_map<long long, RoadNode>& nodes) const;
 };
 
-// KD树节点，用于空间索引
-struct SpatialNode {
-    const RoadNode* node;  // 指向实际节点的指针
-    std::unique_ptr<SpatialNode> left;
-    std::unique_ptr<SpatialNode> right;
-
-    explicit SpatialNode(const RoadNode* n);
-};
-
 struct ProjectedPoint {
-    double lat, lon;          // 投影点的坐标
-    double distance;          // 到原始点的距离
-    long long roadId;         // 所在道路的ID
+    double lat = 0.0, lon = 0.0; // 投影点的坐标
+    double distance = std::numeric_limits<double>::infinity(); // 到原始点的距离
+    long long roadId = -1;    // 所在道路的ID
     std::string roadName;     // 道路名称
-    long long segment1;       // 投影点所在线段的起始节点ID
-    long long segment2;       // 投影点所在线段的结束节点ID
-    double segmentRatio;      // 投影点在线段上的比例（0-1之间）
+    long long segment1 = -1;  // 投影点所在线段的起始节点ID
+    long long segment2 = -1;  // 投影点所在线段的结束节点ID
+    double segmentRatio = 0.0; // 投影点在线段上的比例（0-1之间）
 };
 
 // 路网类
 class RoadNetwork {
 public:
-    RoadNetwork();
-    ~RoadNetwork();
-
     // 核心功能
     bool loadFromOsm(const std::string& filename);  // 加载OSM数据
-    long long findNearestNode(double lat, double lon) const;  // 查找最近节点
 
     // 数据访问器
     const RoadNode* getNode(long long id) const;
@@ -111,7 +98,6 @@ private:
     std::unordered_map<long long, RoadNode> nodes_;        // 所有节点
     std::unordered_map<long long, RoadSegment> roads_;     // 所有道路
     std::unordered_set<long long> roadNodes_;              // 道路节点ID集合
-    std::unique_ptr<SpatialNode> spatialIndex_;            // 空间索引树根节点
 
     // 数据解析方法
     void parseRoadWay(tinyxml2::XMLElement* wayElement);
@@ -123,14 +109,6 @@ private:
     // 路网构建方法
     void createRoadConnections();   // 建立节点间的连接关系
     void processIntersections();    // 处理交叉路口
-    void buildSpatialIndex();       // 构建空间索引
-
-    // KD树相关方法
-    static std::unique_ptr<SpatialNode> buildKDTree(
-        std::vector<const RoadNode*>& nodes, int depth = 0);
-    static void findNearestNodeImpl(
-        const SpatialNode* node, const GeoPoint& target,
-        const RoadNode*& best, double& bestDist, int depth);
 
     // 辅助方法
     static bool isRoadWay(const std::unordered_map<std::string, std::string>& tags);

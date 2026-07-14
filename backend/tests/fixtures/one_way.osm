@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<osm version="0.6">
+  <node id="1" lat="0.000000" lon="0.000000" />
+  <node id="2" lat="0.000000" lon="0.001000" />
+  <node id="3" lat="0.000000" lon="0.002000" />
+  <way id="100">
+    <nd ref="1" />
+    <nd ref="2" />
+    <nd ref="3" />
+    <tag k="highway" v="residential" />
+    <tag k="name" v="单行测试路" />
+    <tag k="oneway" v="yes" />
+  </way>
+</osm>

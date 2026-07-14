@@ -1,21 +1,39 @@
-cmake_minimum_required(VERSION 3.28)
-project(MapNavigation)
-
-link_libraries(ws2_32)
-link_libraries(mswsock)
+cmake_minimum_required(VERSION 3.16)
+project(MapNavigation LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
-include_directories(${CMAKE_SOURCE_DIR}/lib)
-include_directories(${CMAKE_SOURCE_DIR}/lib/Crow/include)
-include_directories(${CMAKE_SOURCE_DIR}/lib/json/include)
-include_directories(${CMAKE_SOURCE_DIR}/lib/asio/include)
+find_package(Threads REQUIRED)
 
-add_executable(MapNavigation main.cpp
-        src/PathFinder.cpp
-        src/PathFinder.h
-        src/OsmParser.cpp
-        src/OsmParser.h
-        lib/tinyxml2.h
-        lib/tinyxml2.cpp
-        )
+add_library(mapnavigation_core
+    src/PathFinder.cpp
+    src/OsmParser.cpp
+    lib/tinyxml2.cpp
+)
+target_include_directories(mapnavigation_core PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/lib
+)
+
+add_executable(MapNavigation main.cpp)
+target_include_directories(MapNavigation PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/lib/Crow/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/lib/json/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/lib/asio/include
+)
+target_link_libraries(MapNavigation PRIVATE mapnavigation_core Threads::Threads)
+
+if(WIN32)
+    target_link_libraries(MapNavigation PRIVATE ws2_32 mswsock)
+endif()
+include(CTest)
+if(BUILD_TESTING)
+    add_executable(MapNavigationTests tests/PathFinderTests.cpp)
+    target_link_libraries(MapNavigationTests PRIVATE mapnavigation_core)
+    add_test(
+        NAME pathfinder_regressions
+        COMMAND MapNavigationTests ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/one_way.osm
+    )
+endif()

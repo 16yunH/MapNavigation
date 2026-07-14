@@ -13,223 +13,260 @@ PathFinder::PathFinder(const road_network::RoadNetwork& network)
 
 RoutePath PathFinder::findPath(double startLat, double startLon,
                              double endLat, double endLon) const {
-    // 找到最近的道路点
     auto startPoint = network_.findNearestPointOnRoad(startLat, startLon);
     auto endPoint = network_.findNearestPointOnRoad(endLat, endLon);
 
-    if (!startPoint.distance || !endPoint.distance) {
-        return RoutePath{.success = false};
+    if (startPoint.roadId < 0 || endPoint.roadId < 0 ||
+        !std::isfinite(startPoint.distance) || !std::isfinite(endPoint.distance)) {
+        return {};
     }
 
-    // 考虑起点和终点所在道路段的两个端点，找到最佳组合
-    std::vector<std::pair<long long, long long>> candidatePairs = {
-        {startPoint.segment1, endPoint.segment1},
-        {startPoint.segment1, endPoint.segment2},
-        {startPoint.segment2, endPoint.segment1},
-        {startPoint.segment2, endPoint.segment2}
+    const auto* startRoad = network_.getRoad(startPoint.roadId);
+    const auto* endRoad = network_.getRoad(endPoint.roadId);
+    const auto* startSegment1 = network_.getNode(startPoint.segment1);
+    const auto* startSegment2 = network_.getNode(startPoint.segment2);
+    const auto* endSegment1 = network_.getNode(endPoint.segment1);
+    const auto* endSegment2 = network_.getNode(endPoint.segment2);
+    if (!startRoad || !endRoad || !startSegment1 || !startSegment2 ||
+        !endSegment1 || !endSegment2) {
+        return {};
+    }
+
+    const double startSegmentLength =
+        startSegment1->location.distanceTo(startSegment2->location);
+    const double endSegmentLength =
+        endSegment1->location.distanceTo(endSegment2->location);
+
+    struct Connector {
+        long long nodeId;
+        double distance;
     };
 
-    double bestDistance = std::numeric_limits<double>::max();
-    std::vector<long long> bestPath;
+    std::vector<Connector> startConnectors;
+    std::vector<Connector> endConnectors;
+    if (!startRoad->oneWay) {
+        startConnectors.push_back({
+            startPoint.segment1, startPoint.segmentRatio * startSegmentLength});
+    }
+    startConnectors.push_back({
+        startPoint.segment2, (1.0 - startPoint.segmentRatio) * startSegmentLength});
 
-    // 尝试所有可能的组合，找到最短路径
-    for (const auto& [start, end] : candidatePairs) {
-        auto path = findShortestPath(start, end);
-        if (!path.empty()) {
-            double pathDist = 0;
-            // 计算路径总长度
-            for (size_t i = 0; i < path.size() - 1; ++i) {
+    endConnectors.push_back({
+        endPoint.segment1, endPoint.segmentRatio * endSegmentLength});
+    if (!endRoad->oneWay) {
+        endConnectors.push_back({
+            endPoint.segment2, (1.0 - endPoint.segmentRatio) * endSegmentLength});
+    }
+
+    const bool sameSegment = startPoint.roadId == endPoint.roadId &&
+        startPoint.segment1 == endPoint.segment1 &&
+        startPoint.segment2 == endPoint.segment2;
+    const bool directTravelAllowed = sameSegment &&
+        (!startRoad->oneWay || startPoint.segmentRatio <= endPoint.segmentRatio);
+
+    double bestDistance = std::numeric_limits<double>::infinity();
+    std::vector<long long> bestPath;
+    double bestStartConnector = 0.0;
+    double bestEndConnector = 0.0;
+    bool useDirectSegment = false;
+
+    if (directTravelAllowed) {
+        bestDistance = startPoint.distance + endPoint.distance +
+            std::abs(endPoint.segmentRatio - startPoint.segmentRatio) *
+                startSegmentLength;
+        useDirectSegment = true;
+    }
+
+    for (const auto& startConnector : startConnectors) {
+        for (const auto& endConnector : endConnectors) {
+            auto path = findShortestPath(startConnector.nodeId, endConnector.nodeId);
+            if (path.empty()) {
+                continue;
+            }
+
+            double pathDistance = startPoint.distance + startConnector.distance +
+                endConnector.distance + endPoint.distance;
+            for (size_t i = 0; i + 1 < path.size(); ++i) {
                 const auto* node1 = network_.getNode(path[i]);
                 const auto* node2 = network_.getNode(path[i + 1]);
-                pathDist += node1->location.distanceTo(node2->location);
+                if (!node1 || !node2) {
+                    pathDistance = std::numeric_limits<double>::infinity();
+                    break;
+                }
+                pathDistance += node1->location.distanceTo(node2->location);
             }
-            
-            // 加上到实际起终点的距离
-            pathDist += startPoint.distance + endPoint.distance;
 
-            if (pathDist < bestDistance) {
-                bestDistance = pathDist;
+            if (pathDistance < bestDistance) {
+                bestDistance = pathDistance;
                 bestPath = std::move(path);
+                bestStartConnector = startPoint.distance + startConnector.distance;
+                bestEndConnector = endConnector.distance + endPoint.distance;
+                useDirectSegment = false;
             }
         }
     }
 
-    if (bestPath.empty()) {
-        return RoutePath{.success = false};
+    if (!std::isfinite(bestDistance)) {
+        return {};
     }
 
-    // 构建完整的路径信息
+    auto appendCoordinate = [](std::vector<std::pair<double, double>>& coordinates,
+                               double lat, double lon) {
+        constexpr double epsilon = 1e-10;
+        if (coordinates.empty() ||
+            std::abs(coordinates.back().first - lat) > epsilon ||
+            std::abs(coordinates.back().second - lon) > epsilon) {
+            coordinates.emplace_back(lat, lon);
+        }
+    };
+
+    if (useDirectSegment) {
+        RoutePath result;
+        result.success = true;
+        result.totalDistance = bestDistance;
+        result.totalDuration = calculateSegmentDuration(bestDistance, startRoad->type);
+        result.startRoadName = startRoad->name;
+        result.endRoadName = startRoad->name;
+        appendCoordinate(result.coordinates, startLat, startLon);
+        appendCoordinate(result.coordinates, startPoint.lat, startPoint.lon);
+        appendCoordinate(result.coordinates, endPoint.lat, endPoint.lon);
+        appendCoordinate(result.coordinates, endLat, endLon);
+
+        RouteStep step;
+        step.lat = startLat;
+        step.lon = startLon;
+        step.distance = result.totalDistance;
+        step.duration = result.totalDuration;
+        step.roadName = startRoad->name;
+        step.roadType = startRoad->type;
+        step.instruction = "沿" +
+            (startRoad->name.empty() ? std::string("当前道路") : startRoad->name) +
+            "行驶并到达目的地";
+        result.steps.push_back(std::move(step));
+        return result;
+    }
+
+    if (bestPath.empty()) {
+        return {};
+    }
+
     auto result = constructRoutePath(bestPath);
     result.startRoadName = startPoint.roadName;
     result.endRoadName = endPoint.roadName;
+    result.totalDistance += bestStartConnector + bestEndConnector;
+    const double startConnectorDuration =
+        calculateSegmentDuration(bestStartConnector, startRoad->type);
+    const double endConnectorDuration =
+        calculateSegmentDuration(bestEndConnector, endRoad->type);
+    result.totalDuration += startConnectorDuration + endConnectorDuration;
+
+    std::vector<std::pair<double, double>> coordinates;
+    appendCoordinate(coordinates, startLat, startLon);
+    appendCoordinate(coordinates, startPoint.lat, startPoint.lon);
+    for (const auto& [lat, lon] : result.coordinates) {
+        appendCoordinate(coordinates, lat, lon);
+    }
+    appendCoordinate(coordinates, endPoint.lat, endPoint.lon);
+    appendCoordinate(coordinates, endLat, endLon);
+    result.coordinates = std::move(coordinates);
+
+    constexpr double connectorEpsilon = 0.01;
+    if (bestStartConnector > connectorEpsilon) {
+        RouteStep step;
+        step.lat = startLat;
+        step.lon = startLon;
+        step.distance = bestStartConnector;
+        step.duration = startConnectorDuration;
+        step.roadName = startRoad->name;
+        step.roadType = startRoad->type;
+        step.instruction = "前往" +
+            (startRoad->name.empty() ? std::string("最近道路") : startRoad->name);
+        result.steps.insert(result.steps.begin(), std::move(step));
+    }
+
+    if (bestEndConnector > connectorEpsilon) {
+        if (!result.steps.empty()) {
+            result.steps.back().instruction = "继续直行";
+        }
+        RouteStep step;
+        step.lat = endPoint.lat;
+        step.lon = endPoint.lon;
+        step.distance = bestEndConnector;
+        step.duration = endConnectorDuration;
+        step.roadName = endRoad->name;
+        step.roadType = endRoad->type;
+        step.instruction = "到达目的地";
+        result.steps.push_back(std::move(step));
+    }
 
     return result;
 }
 
 std::vector<long long> PathFinder::findShortestPath(
     long long startId, long long endId) const {
-    // 初始化双向A*搜索的数据结构
-    std::priority_queue<SearchNode, std::vector<SearchNode>, std::greater<>> 
-        openSetForward, openSetBackward;
-    std::unordered_map<long long, double> gScoreForward, gScoreBackward;
-    std::unordered_map<long long, long long> cameFromForward, cameFromBackward;
-    std::unordered_set<long long> closedSetForward, closedSetBackward;
+    std::priority_queue<SearchNode, std::vector<SearchNode>, std::greater<>> openSet;
+    std::unordered_map<long long, double> gScore;
+    std::unordered_map<long long, long long> cameFrom;
+    std::unordered_set<long long> closedSet;
 
     const auto* startNode = network_.getNode(startId);
     const auto* goalNode = network_.getNode(endId);
 
     if (!startNode || !goalNode) return {};
 
-    // 初始化前向搜索
-    gScoreForward[startId] = 0;
-    openSetForward.push({
-        startId, 
-        0.0, 
-        calculateHeuristic(startNode, goalNode),
-        -1
-    });
+    gScore[startId] = 0.0;
+    openSet.push({startId, 0.0, calculateHeuristic(startNode, goalNode)});
 
-    // 初始化后向搜索
-    gScoreBackward[endId] = 0;
-    openSetBackward.push({
-        endId,
-        0.0,
-        calculateHeuristic(goalNode, startNode),
-        -1
-    });
-
-    double bestPathLength = std::numeric_limits<double>::infinity();
-    long long meetingNode = -1;
-
-    // 主搜索循环
-    while (!openSetForward.empty() && !openSetBackward.empty()) {
-        constexpr double heuristicWeight = 1.1;
-        // 检查是否可以提前终止
-        if (bestPathLength <= 
-            openSetForward.top().fScore + openSetBackward.top().fScore) {
-            break;
+    while (!openSet.empty()) {
+        const auto current = openSet.top();
+        openSet.pop();
+        if (!closedSet.insert(current.nodeId).second) {
+            continue;
         }
 
-        // 前向搜索一步
-        if (!openSetForward.empty()) {
-            auto current = openSetForward.top();
-            openSetForward.pop();
+        if (current.nodeId == endId) {
+            std::vector<long long> path;
+            for (long long nodeId = endId;; nodeId = cameFrom.at(nodeId)) {
+                path.push_back(nodeId);
+                if (nodeId == startId) {
+                    break;
+                }
+            }
+            std::reverse(path.begin(), path.end());
+            return path;
+        }
 
-            if (closedSetForward.count(current.nodeId)) {
+        const auto* node = network_.getNode(current.nodeId);
+        if (!node) {
+            continue;
+        }
+
+        for (const auto& [neighborId, distance] : node->neighbors) {
+            if (closedSet.count(neighborId)) {
                 continue;
             }
 
-            closedSetForward.insert(current.nodeId);
-
-            // 检查是否找到相遇点
-            if (closedSetBackward.count(current.nodeId)) {
-                double pathLength = gScoreForward[current.nodeId] + 
-                                  gScoreBackward[current.nodeId];
-                if (pathLength < bestPathLength) {
-                    bestPathLength = pathLength;
-                    meetingNode = current.nodeId;
-                }
-            }
-
-            // 扩展邻居节点
-            const auto* node = network_.getNode(current.nodeId);
-            for (const auto& [neighborId, distance] : node->neighbors) {
-                if (closedSetForward.count(neighborId)) {
-                    continue;
-                }
-
-                double tentativeGScore = gScoreForward[current.nodeId] + distance;
-
-                if (!gScoreForward.count(neighborId) || 
-                    tentativeGScore < gScoreForward[neighborId]) {
-                    
-                    gScoreForward[neighborId] = tentativeGScore;
-                    cameFromForward[neighborId] = current.nodeId;
-
-                    const auto* neighborNode = network_.getNode(neighborId);
-                    double hScore = calculateHeuristic(neighborNode, goalNode);
-                    
-                    openSetForward.push({
-                        neighborId,
-                        tentativeGScore,
-                        tentativeGScore + heuristicWeight * hScore,
-                        current.nodeId
-                    });
-                }
-            }
-        }
-
-        // 后向搜索一步
-        if (!openSetBackward.empty()) {
-            auto current = openSetBackward.top();
-            openSetBackward.pop();
-
-            if (closedSetBackward.count(current.nodeId)) {
+            const double tentativeGScore = gScore[current.nodeId] + distance;
+            const auto existingScore = gScore.find(neighborId);
+            if (existingScore != gScore.end() && tentativeGScore >= existingScore->second) {
                 continue;
             }
 
-            closedSetBackward.insert(current.nodeId);
-
-            if (closedSetForward.count(current.nodeId)) {
-                double pathLength = gScoreForward[current.nodeId] + 
-                                  gScoreBackward[current.nodeId];
-                if (pathLength < bestPathLength) {
-                    bestPathLength = pathLength;
-                    meetingNode = current.nodeId;
-                }
+            const auto* neighborNode = network_.getNode(neighborId);
+            if (!neighborNode) {
+                continue;
             }
-
-            const auto* node = network_.getNode(current.nodeId);
-            for (const auto& [neighborId, distance] : node->neighbors) {
-                if (closedSetBackward.count(neighborId)) {
-                    continue;
-                }
-
-                double tentativeGScore = gScoreBackward[current.nodeId] + distance;
-
-                if (!gScoreBackward.count(neighborId) || 
-                    tentativeGScore < gScoreBackward[neighborId]) {
-                    
-                    gScoreBackward[neighborId] = tentativeGScore;
-                    cameFromBackward[neighborId] = current.nodeId;
-
-                    const auto* neighborNode = network_.getNode(neighborId);
-                    double hScore = calculateHeuristic(neighborNode, startNode);
-                    
-                    openSetBackward.push({
-                        neighborId,
-                        tentativeGScore,
-                        tentativeGScore + heuristicWeight * hScore,
-                        current.nodeId
-                    });
-                }
-            }
+            cameFrom[neighborId] = current.nodeId;
+            gScore[neighborId] = tentativeGScore;
+            openSet.push({
+                neighborId,
+                tentativeGScore,
+                tentativeGScore + calculateHeuristic(neighborNode, goalNode)
+            });
         }
     }
 
-    // 如果没有找到路径
-    if (meetingNode == -1) {
-        return {};
-    }
-
-    // 构建完整路径
-    std::vector<long long> path;
-    
-    // 构建前向部分
-    for (long long current = meetingNode; current != -1;
-         current = cameFromForward.count(current) ? cameFromForward[current] : -1) {
-        path.push_back(current);
-    }
-    std::reverse(path.begin(), path.end());
-
-    // 构建后向部分（跳过重复的meeting node）
-    for (long long current = cameFromBackward[meetingNode];
-         current != -1;
-         current = cameFromBackward.count(current) ? cameFromBackward[current] : -1) {
-        path.push_back(current);
-    }
-
-    return path;
+    return {};
 }
 
 double PathFinder::calculateHeuristic(
@@ -440,7 +477,6 @@ RoutePath PathFinder::constructRoutePath(const std::vector<long long>& pathNodes
                 nextRoadName
             );
         } else {
-            // 最后一段路不需要转向信息
             step.direction = RouteStep::Direction::STRAIGHT;
             step.instruction = "到达目的地";
         }

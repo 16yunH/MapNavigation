@@ -6,8 +6,8 @@ The interactive page is in Chinese.
 ## Features
 
 ### Core Functionality
-- Interactive map display of Yingtan and Guixi cities using vue3-leaflet and OpenStreetMap
-- Shortest path routing between two points using bidirectional A* algorithm
+- Interactive map display of Yingtan and Guixi cities using Leaflet and OpenStreetMap
+- Shortest path routing between two points using directed A* search
 - Detailed navigation instructions with turn-by-turn guidance
 - Path visualization on the map
 
@@ -24,7 +24,7 @@ The interactive page is in Chinese.
 
 ### Frontend
 - Vue.js
-- vue3-leaflet for map visualization
+- Leaflet for map visualization
 - Gaode Maps API for location services
 
 ### Backend
@@ -36,35 +36,54 @@ The interactive page is in Chinese.
 - crow
 - json
 - leaflet
-- vue3-leaflet
+- Leaflet
 
 ## Setup and Installation
 
 ### Prerequisites (Recommended)
-- Windows 11
-- MinGW compiler
-- CLion IDE
-- Node.js and npm
+- A C++17 compiler and CMake 3.16 or newer
+- Node.js 20.19+ or 22.12+ and npm
 
 ### Backend Setup
 1. Clone the repository
-2. Open the project in CLion
-3. Build the project
-4. Run the backend server
+2. Configure and build the project:
+   ```bash
+   cmake -S backend -B backend/build
+   cmake --build backend/build
+   ```
+3. Run the backend from the repository root:
+   ```bash
+   ./backend/build/MapNavigation
+   ```
+   Pass an OSM file as the first argument or set `MAP_NAVIGATION_OSM_PATH` to
+   override the default `backend/data/mapofyt.osm`. Deployment can also set
+   `MAP_NAVIGATION_ALLOWED_ORIGIN` and `MAP_NAVIGATION_BIND_ADDRESS`.
 
 ### Frontend Setup
 1. Navigate to the frontend directory
-2. Run the following command:
+2. Copy `.env.example` to `.env.local`, create a Gaode JavaScript API key, and
+   set `VITE_AMAP_JS_KEY` and `VITE_API_BASE_URL`. Restrict the key to the exact development and
+   production domains in the Gaode console. For production, set
+   `VITE_AMAP_SERVICE_HOST` to a reverse proxy that stores the
+   `securityJsCode` server-side. The plaintext `VITE_AMAP_SECURITY_CODE`
+   fallback is intended for local development only. Values prefixed with
+   `VITE_` are embedded in the browser bundle and are not server secrets.
+3. Run the following command:
    ```bash
+   npm ci
    npm run serve
    ```
-3. Access the application at http://localhost:8080/
+4. Access the application at http://localhost:8080/
+
+> Security: never commit real keys to this repository. If a key has already
+> been committed, revoke or rotate it in the Gaode console; removing it from the
+> latest source does not remove it from Git history.
 
 ## Technical Details
 
 ### Path Planning Algorithm
-- Implements bidirectional A* algorithm with a heuristic weight of 1.1
-- Uses KD-Tree for efficient node searching
+- Implements A* path finding with one-way-road support
+- Projects requested coordinates onto the nearest road segment
 - Supports various road types with different speed limits
 - Includes coordinate transformation between GCJ-02 and WGS-84 systems
 

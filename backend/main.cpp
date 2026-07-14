@@ -1,4 +1,8 @@
 #include <iostream>
+#include <cstdint>
+#include <cmath>
+#include <cstdlib>
+#include <filesystem>
 #include "src/OsmParser.h"
 #include "src/PathFinder.h"
 #include "crow.h"
@@ -45,13 +49,42 @@ json::wvalue buildRouteResponse(const RoutePath& route) {
     return result;
 }
 
-int main() {
+namespace {
+
+std::filesystem::path resolveOsmPath(int argc, char* argv[]) {
+    if (argc > 1) {
+        return argv[1];
+    }
+    if (const char* configuredPath = std::getenv("MAP_NAVIGATION_OSM_PATH")) {
+        return configuredPath;
+    }
+
+    const std::filesystem::path fromRepositoryRoot = "backend/data/mapofyt.osm";
+    if (std::filesystem::exists(fromRepositoryRoot)) {
+        return fromRepositoryRoot;
+    }
+    return "data/mapofyt.osm";
+}
+
+bool readCoordinate(const json::rvalue& data, const char* key,
+                    double minimum, double maximum, double& result) {
+    if (!data.has(key) || data[key].t() != json::type::Number) {
+        return false;
+    }
+    result = data[key].d();
+    return std::isfinite(result) && result >= minimum && result <= maximum;
+}
+
+} // namespace
+
+int main(int argc, char* argv[]) {
     cout << "Starting navigation server..." << endl;
 
     // 步骤1：初始化路网数据
     RoadNetwork network;
-    if (!network.loadFromOsm("D:/3.code/CLionProjects/mapnavigation/backend/data/mapofyt.osm")) {
-        cerr << "Failed to load OSM file." << endl;
+    const auto osmPath = resolveOsmPath(argc, argv);
+    if (!network.loadFromOsm(osmPath.string())) {
+        cerr << "Failed to load OSM file: " << osmPath << endl;
         return 1;
     }
     cout << "Road network loaded successfully." << endl;
@@ -62,11 +95,16 @@ int main() {
     // 步骤3：设置Crow服务器
     SimpleApp app;
 
+    const string allowedOrigin = std::getenv("MAP_NAVIGATION_ALLOWED_ORIGIN")
+        ? std::getenv("MAP_NAVIGATION_ALLOWED_ORIGIN")
+        : "http://localhost:8080";
+
     // CORS处理函数
-    auto cors_handler = [](response& res) {
-        res.set_header("Access-Control-Allow-Origin", "*");
+    auto cors_handler = [allowedOrigin](response& res) {
+        res.set_header("Access-Control-Allow-Origin", allowedOrigin);
         res.set_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
         res.set_header("Access-Control-Allow-Headers", "Content-Type");
+        res.set_header("Vary", "Origin");
     };
 
     // 获取道路网络信息的端点
@@ -99,16 +137,28 @@ int main() {
         }
 
         try {
-            auto data = json::load(req.body);
-            if (!data) {
-                return response(400, "Invalid JSON");
+            if (req.body.size() > 4096) {
+                res = response(413, "Request body too large");
+                cors_handler(res);
+                return res;
             }
 
-            // 从请求中获取起点和终点坐标
-            double startLat = data["startLat"].d();
-            double startLon = data["startLon"].d();
-            double endLat = data["endLat"].d();
-            double endLon = data["endLon"].d();
+            auto data = json::load(req.body);
+            if (!data) {
+                res = response(400, "Invalid JSON");
+                cors_handler(res);
+                return res;
+            }
+
+            double startLat, startLon, endLat, endLon;
+            if (!readCoordinate(data, "startLat", -90.0, 90.0, startLat) ||
+                !readCoordinate(data, "startLon", -180.0, 180.0, startLon) ||
+                !readCoordinate(data, "endLat", -90.0, 90.0, endLat) ||
+                !readCoordinate(data, "endLon", -180.0, 180.0, endLon)) {
+                res = response(400, "Coordinates must be finite numbers in valid ranges");
+                cors_handler(res);
+                return res;
+            }
 
             // 计算路径
             auto route = pathFinder.findPath(startLat, startLon, endLat, endLon);
@@ -118,7 +168,8 @@ int main() {
             res = response(result);
 
         } catch (const exception& e) {
-            res = response(500, string("Server error: ") + e.what());
+            CROW_LOG_ERROR << "Route request failed: " << e.what();
+            res = response(500, "Internal server error");
         }
 
         cors_handler(res);
@@ -150,7 +201,7 @@ int main() {
             }
 
             roads.push_back({
-                {"id", roadId},
+                {"id", static_cast<std::int64_t>(roadId)},
                 {"name", road.name},
                 {"type", road.type},
                 {"coordinates", std::move(coordinates)}
@@ -164,8 +215,12 @@ int main() {
     });
 
     // 步骤4：启动服务器
-    cout << "Starting server on port 8081..." << endl;
-    app.port(8081)
+    const string bindAddress = std::getenv("MAP_NAVIGATION_BIND_ADDRESS")
+        ? std::getenv("MAP_NAVIGATION_BIND_ADDRESS")
+        : "127.0.0.1";
+    cout << "Starting server on " << bindAddress << ":8081..." << endl;
+    app.bindaddr(bindAddress)
+       .port(8081)
        .multithreaded()
        .run();
 

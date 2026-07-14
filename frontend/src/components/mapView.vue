@@ -101,7 +101,8 @@
 <script>
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import axios from 'axios';
+import api from '../services/api';
+import {searchAmapSuggestions} from '../services/amap';
 
 export default {
   name: 'MapNavigation',
@@ -120,8 +121,7 @@ export default {
       startSearch: '',
       endSearch: '',
       startSuggestions: [],
-      endSuggestions: [],
-      amapKey: 'b44c18bdc514de170db976d407902980'
+      endSuggestions: []
     };
   },
 
@@ -149,7 +149,7 @@ export default {
 
     transformLat(x, y) {
       // 纬度转换算法
-      const PI = 3.14159265358979324;
+      const PI = Math.PI;
       let ret = -100.0 + 2.0 * x + 3.0 * y + 0.2 * y * y + 0.1 * x * y + 0.2 * Math.sqrt(Math.abs(x));
       ret += (20.0 * Math.sin(6.0 * x * PI) + 20.0 * Math.sin(2.0 * x * PI)) * 2.0 / 3.0;
       ret += (20.0 * Math.sin(y * PI) + 40.0 * Math.sin(y / 3.0 * PI)) * 2.0 / 3.0;
@@ -159,7 +159,7 @@ export default {
 
     transformLng(x, y) {
       // 经度转换算法
-      const PI = 3.14159265358979324;
+      const PI = Math.PI;
       let ret = 300.0 + x + 2.0 * y + 0.1 * x * x + 0.1 * x * y + 0.1 * Math.sqrt(Math.abs(x));
       ret += (20.0 * Math.sin(6.0 * x * PI) + 20.0 * Math.sin(2.0 * x * PI)) * 2.0 / 3.0;
       ret += (20.0 * Math.sin(x * PI) + 40.0 * Math.sin(x / 3.0 * PI)) * 2.0 / 3.0;
@@ -173,14 +173,15 @@ export default {
         return { lat, lng };
       }
 
-      const PI = 3.14159265358979324;
+      const PI = Math.PI;
+      const eccentricitySquared = 0.006693421622965943;
       let dLat = this.transformLat(lng - 105.0, lat - 35.0);
       let dLng = this.transformLng(lng - 105.0, lat - 35.0);
       let radLat = lat / 180.0 * PI;
       let magic = Math.sin(radLat);
-      magic = 1 - 0.00669342162296594323 * magic * magic;
+      magic = 1 - eccentricitySquared * magic * magic;
       let sqrtMagic = Math.sqrt(magic);
-      dLat = (dLat * 180.0) / ((6378245.0 * (1 - 0.00669342162296594323)) / (magic * sqrtMagic) * PI);
+      dLat = (dLat * 180.0) / ((6378245.0 * (1 - eccentricitySquared)) / (magic * sqrtMagic) * PI);
       dLng = (dLng * 180.0) / (6378245.0 / sqrtMagic * Math.cos(radLat) * PI);
 
       return {
@@ -208,7 +209,7 @@ export default {
     // 加载道路网络数据
     async loadRoadNetwork() {
       try {
-        const response = await axios.get('http://localhost:8081/roads');
+        const response = await api.get('/roads');
         this.drawRoads(response.data.roads);
       } catch (error) {
         console.error('加载道路数据失败:', error);
@@ -247,31 +248,21 @@ export default {
 
     async fetchSuggestions(keyword, type) {
       try {
-        const response = await axios.get(`https://restapi.amap.com/v3/assistant/inputtips`, {
-          params: {
-            keywords: keyword,
-            key: this.amapKey,
-            city: '鹰潭',
-            location: '117.069202,28.260189',
-            datatype: 'all',
-          }
-        });
+        const suggestions = await searchAmapSuggestions(keyword);
 
-        if (response.data.status === '1') {
-          const suggestions = response.data.tips.map(tip => ({
-            id: tip.id,
-            name: tip.name,
-            location: tip.location
-          }));
-
-          if (type === 'start') {
-            this.startSuggestions = suggestions;
-          } else {
-            this.endSuggestions = suggestions;
-          }
+        if (type === 'start') {
+          this.startSuggestions = suggestions;
+        } else {
+          this.endSuggestions = suggestions;
         }
       } catch (error) {
         console.error('获取位置建议失败:', error);
+
+        if (type === 'start') {
+          this.startSuggestions = [];
+        } else {
+          this.endSuggestions = [];
+        }
       }
     },
 
@@ -338,7 +329,7 @@ export default {
 
       this.loading = true;
       try {
-        const response = await axios.post('http://localhost:8081/find_path', {
+        const response = await api.post('/find_path', {
           startLat: this.startPoint.lat,
           startLon: this.startPoint.lng,
           endLat: this.endPoint.lat,
@@ -379,13 +370,7 @@ export default {
               html: `<div class="step-marker">${index + 1}</div>`
             })
           })
-              .bindPopup(
-                  `<div class="step-popup">
-              <b>${step.instruction}</b><br>
-              距离: ${(step.distance).toFixed(0)}米<br>
-              预计时间: ${Math.round(step.duration)}秒
-            </div>`
-              )
+              .bindPopup(this.createStepPopup(step))
               .addTo(this.map);
 
           this.navigationMarkers.push(marker);
@@ -396,6 +381,21 @@ export default {
       this.map.fitBounds(this.pathLayer.getBounds(), {
         padding: [50, 50]
       });
+    },
+
+    createStepPopup(step) {
+      const popup = document.createElement('div');
+      popup.className = 'step-popup';
+
+      const instruction = document.createElement('b');
+      instruction.textContent = step.instruction;
+      popup.appendChild(instruction);
+      popup.appendChild(document.createElement('br'));
+      popup.appendChild(document.createTextNode(`距离: ${step.distance.toFixed(0)}米`));
+      popup.appendChild(document.createElement('br'));
+      popup.appendChild(document.createTextNode(`预计时间: ${Math.round(step.duration)}秒`));
+
+      return popup;
     },
 
     // 清除路径

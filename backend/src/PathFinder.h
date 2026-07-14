@@ -21,22 +21,22 @@ struct RouteStep {
         UTURN         // 掉头
     };
 
-    double lat, lon;           // 转向点的坐标
-    Direction direction;       // 转向方向
+    double lat = 0.0, lon = 0.0; // 转向点的坐标
+    Direction direction = Direction::STRAIGHT; // 转向方向
     std::string instruction;   // 转向提示（如："在XX路口左转"）
-    double distance;           // 当前路段距离（米）
+    double distance = 0.0;     // 当前路段距离（米）
     std::string roadName;      // 当前道路名称
     std::string roadType;      // 当前道路类型
-    double duration;           // 预计时间（秒）
+    double duration = 0.0;     // 预计时间（秒）
 };
 
 // 完整路径信息，设计用于前端显示和导航
 struct RoutePath {
     std::vector<std::pair<double, double>> coordinates; // 路径点坐标序列
     std::vector<RouteStep> steps;                       // 导航步骤
-    double totalDistance;    // 总距离（米）
-    double totalDuration;    // 总时间（秒）
-    bool success;           // 是否找到有效路径
+    double totalDistance = 0.0; // 总距离（米）
+    double totalDuration = 0.0; // 总时间（秒）
+    bool success = false;       // 是否找到有效路径
     std::string startRoadName;  // 起始道路名称
     std::string endRoadName;    // 终点道路名称
 };
@@ -56,9 +56,6 @@ private:
         long long nodeId;      // 节点ID
         double gScore;         // 从起点到当前节点的实际距离
         double fScore;         // gScore + 预估距离
-        long long cameFrom;    // 前驱节点ID
-        std::string roadName;  // 当前所在道路名称
-        std::string roadType;  // 当前道路类型
 
         // 用于优先队列的比较操作
         bool operator>(const SearchNode& other) const {
